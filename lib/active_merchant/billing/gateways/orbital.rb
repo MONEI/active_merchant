@@ -465,9 +465,47 @@ module ActiveMerchant #:nodoc:
         end
       end
 
-      def add_cdpt_eci_and_xid(xml, creditcard)
-        xml.tag! :AuthenticationECIInd, creditcard.eci
-        xml.tag! :XID, creditcard.transaction_id if creditcard.transaction_id
+      def add_eci(xml, creditcard, three_d_secure)
+        eci = if three_d_secure
+                three_d_secure[:eci]
+              elsif creditcard.is_a?(NetworkTokenizationCreditCard)
+                creditcard.eci
+              end
+
+        xml.tag!(:AuthenticationECIInd, eci) if eci
+      end
+
+      def add_xid(xml, creditcard, three_d_secure)
+        xid = if three_d_secure && creditcard&.brand == 'visa'
+                three_d_secure[:xid]
+              elsif creditcard.is_a?(NetworkTokenizationCreditCard)
+                creditcard.transaction_id
+              end
+
+        xml.tag!(:XID, xid) if xid
+      end
+
+      def add_cavv(xml, creditcard, three_d_secure)
+        return unless three_d_secure && creditcard&.brand == 'visa'
+
+        xml.tag!(:CAVV, three_d_secure[:cavv])
+      end
+
+      def add_aav(xml, creditcard, three_d_secure)
+        return unless three_d_secure && creditcard&.brand == 'master'
+
+        xml.tag!(:AAV, three_d_secure[:cavv])
+      end
+
+      def add_pymt_brand_program_code(xml, creditcard, three_d_secure)
+        return unless three_d_secure
+        program_code = if creditcard&.brand == 'discover'
+                         'DPB'
+                       elsif creditcard&.brand == 'american_express'
+                         'ASK'
+                       end
+
+        xml.tag!(:PymtBrandProgramCode, program_code) if program_code
       end
 
       def add_cdpt_payment_cryptogram(xml, creditcard)
@@ -633,9 +671,11 @@ module ActiveMerchant #:nodoc:
 
             yield xml if block_given?
 
-            if creditcard.is_a?(NetworkTokenizationCreditCard)
-              add_cdpt_eci_and_xid(xml, creditcard)
-            end
+            three_d_secure = parameters[:three_d_secure]
+
+            add_eci(xml, creditcard, three_d_secure)
+            add_cavv(xml, creditcard, three_d_secure)
+            add_xid(xml, creditcard, three_d_secure)
 
             xml.tag! :OrderID, format_order_id(parameters[:order_id])
             xml.tag! :Amount, amount(money)
@@ -644,6 +684,7 @@ module ActiveMerchant #:nodoc:
             add_level_2_tax(xml, parameters)
             add_level_2_advice_addendum(xml, parameters)
 
+            add_aav(xml, creditcard, three_d_secure)
             # CustomerAni, AVSPhoneType and AVSDestPhoneType could be added here.
 
             if creditcard.is_a?(NetworkTokenizationCreditCard)
@@ -666,6 +707,7 @@ module ActiveMerchant #:nodoc:
 
             add_level_2_purchase(xml, parameters)
             add_stored_credentials(xml, parameters)
+            add_pymt_brand_program_code(xml, creditcard, three_d_secure)
           end
         end
         xml.target!
