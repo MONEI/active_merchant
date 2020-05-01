@@ -24,7 +24,7 @@ class MoneiTest < Test::Unit::TestCase
     response = @gateway.purchase(@amount, @credit_card, @options)
     assert_success response
 
-    assert_equal '8a829449488d79090148996c441551fb', response.authorization
+    assert_equal '067574158f1f42499c31404752d52d06', response.authorization
     assert response.test?
   end
 
@@ -128,10 +128,15 @@ class MoneiTest < Test::Unit::TestCase
   end
 
   def test_3ds_request
+    authentication_type = '3DSecure'
+    authentication_eci = '05'
+    authentication_cavv = 'AAACAgSRBklmQCFgMpEGAAAAAAA='
+    authentication_xid = 'CAACCVVUlwCXUyhQNlSXAAAAAAA='
+
     three_d_secure_options = {
-      eci: '05',
-      cavv: 'AAACAgSRBklmQCFgMpEGAAAAAAA=',
-      xid: 'CAACCVVUlwCXUyhQNlSXAAAAAAA='
+      eci: authentication_eci,
+      cavv: authentication_cavv,
+      xid: authentication_xid
     }
     options = @options.merge!({
       three_d_secure: three_d_secure_options
@@ -139,298 +144,147 @@ class MoneiTest < Test::Unit::TestCase
     stub_comms do
       @gateway.purchase(@amount, @credit_card, options)
     end.check_request do |endpoint, data, headers|
-      body = CGI.unescape data
-      assert_match %r{<Authentication type="3DSecure">}, body
-      assert_match %r{<ResultIndicator>05</ResultIndicator>}, body
-      assert_match %r{<Parameter name="VERIFICATION_ID">#{three_d_secure_options[:cavv]}</Parameter>}, body
-      assert_match %r{<Parameter name="XID">#{three_d_secure_options[:xid]}</Parameter>}, body
+      assert_match(/\"authentication_type\":\"#{authentication_type}\"/, data)
+      assert_match(/\"authentication_eci\":\"#{authentication_eci}\"/, data)
+      assert_match(/\"authentication_cavv\":\"#{authentication_cavv}\"/, data)
+      assert_match(/\"authentication_xid\":\"#{authentication_xid}\"/, data)
     end.respond_with(successful_purchase_response)
   end
 
   private
 
   def successful_purchase_response
-    return <<-XML
-<?xml version="1.0" encoding="UTF-8"?>
-<Response version="1.0">
-    <Transaction mode="CONNECTOR_TEST" channel="8a82941746287806014698a0e3240575" response="SYNC">
-        <Identification>
-            <ShortID>7621.0198.1858</ShortID>
-            <UniqueID>8a829449488d79090148996c441551fb</UniqueID>
-            <TransactionID>1</TransactionID>
-        </Identification>
-        <Payment code="CC.DB">
-            <Clearing>
-                <Amount>1.00</Amount>
-                <Currency>EUR</Currency>
-                <Descriptor>7621.0198.1858 DEFAULT Store Purchase</Descriptor>
-                <FxRate>1.0</FxRate>
-                <FxSource>INTERN</FxSource>
-                <FxDate>2014-09-21 18:14:42</FxDate>
-            </Clearing>
-        </Payment>
-        <Processing code="CC.DB.90.00">
-            <Timestamp>2014-09-21 18:14:42</Timestamp>
-            <Result>ACK</Result>
-            <Status code="90">NEW</Status>
-            <Reason code="00">Successful Processing</Reason>
-            <Return code="000.100.112">Request successfully processed in 'Merchant in Connector Test Mode'</Return>
-            <Risk score="0" />
-        </Processing>
-    </Transaction>
-</Response>
-    XML
+    <<-RESPONSE
+    {
+      "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
+      "amount": "1.00",
+      "currency": "EUR",
+      "monei_order_id": "067574158f1f42499c31404752d52d06",
+      "order_id": "1",
+      "result": "completed",
+      "test": "true",
+      "timestamp": "2020-04-30T23:23:05.230Z",
+      "message": "Transaction Approved",
+      "transaction_type": "sale",
+      "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
+    }
+    RESPONSE
   end
 
   def failed_purchase_response
-    <<-XML
-<?xml version="1.0" encoding="UTF-8"?>
-<Response version="1.0">
-    <Transaction mode="CONNECTOR_TEST" channel="8a82943746287806014628a0e3240575" response="SYNC">
-        <Identification>
-            <ShortID>9086.6774.0834</ShortID>
-            <UniqueID>8a82944a488d36c101489972b0ee6ace</UniqueID>
-            <TransactionID>1</TransactionID>
-        </Identification>
-        <Payment code="CC.DB" />
-        <Processing code="CC.DB.70.40">
-            <Timestamp>2014-09-21 18:21:43</Timestamp>
-            <Result>NOK</Result>
-            <Status code="70">REJECTED_VALIDATION</Status>
-            <Reason code="40">Account Validation</Reason>
-            <Return code="100.100.700">invalid cc number/brand combination</Return>
-        </Processing>
-    </Transaction>
-</Response>
-    XML
+    <<-RESPONSE
+    {
+      "status": "error",
+      "message": "Card number declined by processor"
+    }
+    RESPONSE
   end
 
   def successful_authorize_response
-    <<-XML
-<?xml version="1.0" encoding="UTF-8"?>
-<Response version="1.0">
-    <Transaction mode="CONNECTOR_TEST" channel="8a82941746487806014628a0e3240575" response="SYNC">
-        <Identification>
-            <ShortID>6853.2944.1442</ShortID>
-            <UniqueID>8a82944a488d36c101489976f0cc6b1c</UniqueID>
-            <TransactionID>1</TransactionID>
-        </Identification>
-        <Payment code="CC.PA">
-            <Clearing>
-                <Amount>1.00</Amount>
-                <Currency>EUR</Currency>
-                <Descriptor>6853.2944.1442 DEFAULT Store Purchase</Descriptor>
-                <FxRate>1.0</FxRate>
-                <FxSource>INTERN</FxSource>
-                <FxDate>2014-09-21 18:26:22</FxDate>
-            </Clearing>
-        </Payment>
-        <Processing code="CC.PA.90.00">
-            <Timestamp>2014-09-21 18:26:22</Timestamp>
-            <Result>ACK</Result>
-            <Status code="90">NEW</Status>
-            <Reason code="00">Successful Processing</Reason>
-            <Return code="000.100.112">Request successfully processed in 'Merchant in Connector Test Mode'</Return>
-            <Risk score="0" />
-        </Processing>
-    </Transaction>
-</Response>
-    XML
+    <<-RESPONSE
+    {
+      "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
+      "amount": "1.00",
+      "currency": "EUR",
+      "monei_order_id": "067574158f1f42499c31404752d52d06",
+      "order_id": "1",
+      "result": "completed",
+      "test": "true",
+      "timestamp": "2020-04-30T23:23:05.230Z",
+      "message": "Transaction Approved",
+      "transaction_type": "authorization",
+      "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
+    }
+    RESPONSE
   end
 
   def failed_authorize_response
-    <<-XML
-<?xml version="1.0" encoding="UTF-8"?>
-<Response version="1.0">
-    <Transaction mode="CONNECTOR_TEST" channel="8a82941746287806014628a0e3240575" response="SYNC">
-        <Identification>
-            <ShortID>4727.2856.0290</ShortID>
-            <UniqueID>8a829449488d79090148998943a853f6</UniqueID>
-            <TransactionID>1</TransactionID>
-        </Identification>
-        <Payment code="CC.PA" />
-        <Processing code="CC.PA.70.40">
-            <Timestamp>2014-09-21 18:46:22</Timestamp>
-            <Result>NOK</Result>
-            <Status code="70">REJECTED_VALIDATION</Status>
-            <Reason code="40">Account Validation</Reason>
-            <Return code="100.100.700">invalid cc number/brand combination</Return>
-        </Processing>
-    </Transaction>
-</Response>
-    XML
+    <<-RESPONSE
+    {
+      "status": "error",
+      "message": "Card number declined by processor"
+    }
+    RESPONSE
   end
 
   def successful_capture_response
-    <<-XML
-<?xml version="1.0" encoding="UTF-8"?>
-<Response version="1.0">
-    <Transaction mode="CONNECTOR_TEST" channel="8a82941746287806014628a0e3240575" response="SYNC">
-        <Identification>
-            <ShortID>1269.8369.2962</ShortID>
-            <UniqueID>8a82944a488d36c10148998d9b316cc6</UniqueID>
-            <TransactionID />
-            <ReferenceID>8a829449488d79090148998d97f05439</ReferenceID>
-        </Identification>
-        <Payment code="CC.CP">
-            <Clearing>
-                <Amount>1.00</Amount>
-                <Currency>EUR</Currency>
-                <Descriptor>1269.8369.2962 DEFAULT Store Purchase</Descriptor>
-                <FxRate>1.0</FxRate>
-                <FxSource>INTERN</FxSource>
-                <FxDate>2014-09-21 18:51:07</FxDate>
-            </Clearing>
-        </Payment>
-        <Processing code="CC.CP.90.00">
-            <Timestamp>2014-09-21 18:51:07</Timestamp>
-            <Result>ACK</Result>
-            <Status code="90">NEW</Status>
-            <Reason code="00">Successful Processing</Reason>
-            <Return code="000.100.112">Request successfully processed in 'Merchant in Connector Test Mode'</Return>
-            <Risk score="0" />
-        </Processing>
-    </Transaction>
-</Response>
-    XML
+    <<-RESPONSE
+    {
+      "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
+      "amount": "1.00",
+      "currency": "EUR",
+      "monei_order_id": "067574158f1f42499c31404752d52d06",
+      "order_id": "1",
+      "result": "completed",
+      "test": "true",
+      "timestamp": "2020-04-30T23:23:05.230Z",
+      "message": "Transaction Approved",
+      "transaction_type": "capture",
+      "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
+    }
+    RESPONSE
   end
 
   def failed_capture_response
-    <<-XML
-<?xml version="1.0" encoding="UTF-8"?>
-<Response version="1.0">
-    <Transaction mode="CONNECTOR_TEST" channel="8a82941746287806014628a0e3240575" response="SYNC">
-        <Identification>
-            <ShortID>0239.0447.7858</ShortID>
-            <UniqueID>8a82944a488d36c10148998fc4b66cfc</UniqueID>
-            <TransactionID />
-            <ReferenceID />
-        </Identification>
-        <Payment code="CC.CP" />
-        <Processing code="CC.CP.70.20">
-            <Timestamp>2014-09-21 18:53:29</Timestamp>
-            <Result>NOK</Result>
-            <Status code="70">REJECTED_VALIDATION</Status>
-            <Reason code="20">Format Error</Reason>
-            <Return code="200.100.302">invalid Request/Transaction/Payment/Presentation tag (not present or [partially] empty)</Return>
-        </Processing>
-    </Transaction>
-</Response>
-    XML
+    <<-RESPONSE
+    {
+      "status": "error",
+      "message": "Card number declined by processor"
+    }
+    RESPONSE
   end
 
   def successful_refund_response
-    <<-XML
-<?xml version="1.0" encoding="UTF-8"?>
-<Response version="1.0">
-    <Transaction mode="CONNECTOR_TEST" channel="8a82941746287806014628a0e3240575" response="SYNC">
-        <Identification>
-            <ShortID>3009.2986.8450</ShortID>
-            <UniqueID>8a829449488d790901489992a493546f</UniqueID>
-            <TransactionID />
-            <ReferenceID>8a82944a488d36c101489992a10f6d21</ReferenceID>
-        </Identification>
-        <Payment code="CC.RF">
-            <Clearing>
-                <Amount>1.00</Amount>
-                <Currency>EUR</Currency>
-                <Descriptor>3009.2986.8450 DEFAULT Store Purchase</Descriptor>
-                <FxRate>1.0</FxRate>
-                <FxSource>INTERN</FxSource>
-                <FxDate>2014-09-21 18:56:37</FxDate>
-            </Clearing>
-        </Payment>
-        <Processing code="CC.RF.90.00">
-            <Timestamp>2014-09-21 18:56:37</Timestamp>
-            <Result>ACK</Result>
-            <Status code="90">NEW</Status>
-            <Reason code="00">Successful Processing</Reason>
-            <Return code="000.100.112">Request successfully processed in 'Merchant in Connector Test Mode'</Return>
-        </Processing>
-    </Transaction>
-</Response>
-    XML
+    <<-RESPONSE
+    {
+      "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
+      "amount": "1.00",
+      "currency": "EUR",
+      "monei_order_id": "067574158f1f42499c31404752d52d06",
+      "order_id": "1",
+      "result": "completed",
+      "test": "true",
+      "timestamp": "2020-04-30T23:23:05.230Z",
+      "message": "Transaction Approved",
+      "transaction_type": "refund",
+      "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
+    }
+    RESPONSE
   end
 
   def failed_refund_response
-    <<-XML
-<?xml version="1.0" encoding="UTF-8"?>
-<Response version="1.0">
-    <Transaction mode="CONNECTOR_TEST" channel="8a82941746287806014628a0e3240575" response="SYNC">
-        <Identification>
-            <ShortID>5070.8829.8658</ShortID>
-            <UniqueID>8a829449488d790901489994b2c65481</UniqueID>
-            <TransactionID />
-            <ReferenceID />
-        </Identification>
-        <Payment code="CC.RF" />
-        <Processing code="CC.RF.70.20">
-            <Timestamp>2014-09-21 18:58:52</Timestamp>
-            <Result>NOK</Result>
-            <Status code="70">REJECTED_VALIDATION</Status>
-            <Reason code="20">Format Error</Reason>
-            <Return code="200.100.302">invalid Request/Transaction/Payment/Presentation tag (not present or [partially] empty)</Return>
-        </Processing>
-    </Transaction>
-</Response>
-    XML
+    <<-RESPONSE
+    {
+      "status": "error",
+      "message": "Card number declined by processor"
+    }
+    RESPONSE
   end
 
   def successful_void_response
-    <<-XML
-<?xml version="1.0" encoding="UTF-8"?>
-<Response version="1.0">
-    <Transaction mode="CONNECTOR_TEST" channel="8a82941746287806014628a0e3240575" response="SYNC">
-        <Identification>
-            <ShortID>4587.6991.6578</ShortID>
-            <UniqueID>8a82944a488d36c1014899957fff6d49</UniqueID>
-            <TransactionID />
-            <ReferenceID>8a829449488d7909014899957cb45486</ReferenceID>
-        </Identification>
-        <Payment code="CC.RV">
-            <Clearing>
-                <Amount>1.00</Amount>
-                <Currency>EUR</Currency>
-                <Descriptor>4587.6991.6578 DEFAULT Store Purchase</Descriptor>
-                <FxRate>1.0</FxRate>
-                <FxSource>INTERN</FxSource>
-                <FxDate>2014-09-21 18:59:44</FxDate>
-            </Clearing>
-        </Payment>
-        <Processing code="CC.RV.90.00">
-            <Timestamp>2014-09-21 18:59:44</Timestamp>
-            <Result>ACK</Result>
-            <Status code="90">NEW</Status>
-            <Reason code="00">Successful Processing</Reason>
-            <Return code="000.100.112">Request successfully processed in 'Merchant in Connector Test Mode'</Return>
-            <Risk score="0" />
-        </Processing>
-    </Transaction>
-</Response>
-    XML
+    <<-RESPONSE
+    {
+      "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
+      "amount": "1.00",
+      "currency": "EUR",
+      "monei_order_id": "067574158f1f42499c31404752d52d06",
+      "order_id": "1",
+      "result": "completed",
+      "test": "true",
+      "timestamp": "2020-04-30T23:23:05.230Z",
+      "message": "Transaction Approved",
+      "transaction_type": "void",
+      "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
+    }
+    RESPONSE
   end
 
   def failed_void_response
-    <<-XML
-<Response version="1.0">
-    <Transaction mode="CONNECTOR_TEST" channel="8a82941746287806014628a0e3240575" response="SYNC">
-        <Identification>
-            <ShortID>5843.9770.9986</ShortID>
-            <UniqueID>8a829449488d7909014899965cd354b6</UniqueID>
-            <TransactionID />
-            <ReferenceID />
-        </Identification>
-        <Payment code="CC.RV" />
-        <Processing code="CC.RV.70.30">
-            <Timestamp>2014-09-21 19:00:41</Timestamp>
-            <Result>NOK</Result>
-            <Status code="70">REJECTED_VALIDATION</Status>
-            <Reason code="30">Reference Error</Reason>
-            <Return code="700.400.530">reversal needs at least one successful transaction of type (CP or DB or RB or PA)</Return>
-            <Risk score="0" />
-        </Processing>
-    </Transaction>
-</Response>
-    XML
+    <<-RESPONSE
+    {
+      "status": "error",
+      "message": "Card number declined by processor"
+    }
+    RESPONSE
   end
 end

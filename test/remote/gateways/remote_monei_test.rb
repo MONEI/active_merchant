@@ -7,7 +7,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
     )
 
     @amount = 100
-    @credit_card = credit_card('4000100011112224')
+    @credit_card = credit_card('4548812049400004', month: 12, year: 2020, verification_value: '123')
     @declined_card = credit_card('5453010000059675')
 
     @options = {
@@ -21,7 +21,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
     response = @gateway.purchase(@amount, @credit_card, @options)
 
     assert_success response
-    assert_equal 'Request successfully processed in \'Merchant in Connector Test Mode\'', response.message
+    assert_equal 'Transaction approved', response.message
   end
 
   def test_successful_purchase_with_3ds
@@ -35,13 +35,13 @@ class RemoteMoneiTest < Test::Unit::TestCase
     response = @gateway.purchase(@amount, @credit_card, options)
 
     assert_success response
-    assert_equal 'Request successfully processed in \'Merchant in Connector Test Mode\'', response.message
+    assert_equal 'Transaction approved', response.message
   end
 
   def test_failed_purchase
     response = @gateway.purchase(@amount, @declined_card, @options)
     assert_failure response
-    assert_equal 'invalid cc number/brand combination', response.message
+    assert_equal 'Card number declined by processor', response.message
   end
 
   def test_failed_purchase_with_3ds
@@ -54,7 +54,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
     })
     response = @gateway.purchase(@amount, @credit_card, options)
     assert_failure response
-    assert_equal 'Invalid 3DSecure Verification_ID. Must have Base64 encoding a Length of 28 digits', response.message
+    assert_equal 'Invalid 3DSecure Verification ID', response.message
   end
 
   def test_successful_authorize_and_capture
@@ -142,22 +142,20 @@ class RemoteMoneiTest < Test::Unit::TestCase
   def test_successful_verify
     response = @gateway.verify(@credit_card, @options)
     assert_success response
-    assert_equal 'Request successfully processed in \'Merchant in Connector Test Mode\'', response.message
+    assert_equal 'Transaction approved', response.message
   end
 
   def test_failed_verify
     response = @gateway.verify(@declined_card, @options)
     assert_failure response
 
-    assert_equal 'invalid cc number/brand combination', response.message
+    assert_equal 'Card number declined by processor', response.message
   end
 
   def test_invalid_login
     gateway = MoneiGateway.new(
-      sender_id: 'mother',
-      channel_id: 'there is no other',
-      login: 'like mother',
-      pwd: 'so treat Her right'
+      account_id: 'mother',
+      password: 'there is no other'
     )
     response = gateway.purchase(@amount, @credit_card, @options)
     assert_failure response

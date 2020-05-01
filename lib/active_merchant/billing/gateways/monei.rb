@@ -8,11 +8,10 @@ module ActiveMerchant #:nodoc:
     # gateway please go to http://www.monei.net
     #
     # === Setup
-    # In order to set-up the gateway you need four paramaters: sender_id, channel_id, login and pwd.
+    # In order to set-up the gateway you need two paramaters: account_id and password.
     # Request that data to Monei.
     class MoneiGateway < Gateway
-      self.test_url = 'https://test.monei-api.net/payment/ctpe'
-      self.live_url = 'https://monei-api.net/payment/ctpe'
+      self.live_url = self.test_url = 'https://pay.monei.net/'
 
       self.supported_countries = ['AD', 'AT', 'BE', 'BG', 'CA', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FO', 'FR', 'GB', 'GI', 'GR', 'HU', 'IE', 'IL', 'IS', 'IT', 'LI', 'LT', 'LU', 'LV', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'TR', 'US', 'VA']
       self.default_currency = 'EUR'
@@ -24,13 +23,11 @@ module ActiveMerchant #:nodoc:
       # Constructor
       #
       # options - Hash containing the gateway credentials, ALL MANDATORY
-      #           :sender_id  Sender ID
-      #           :channel_id Channel ID
-      #           :login      User login
-      #           :pwd        User password
+      #           :account_id      Account ID
+      #           :password        Account password
       #
       def initialize(options={})
-        requires!(options, :sender_id, :channel_id, :login, :pwd)
+        requires!(options, :account_id, :password)
         super
       end
 
@@ -128,102 +125,80 @@ module ActiveMerchant #:nodoc:
 
       # Private: Execute purchase or authorize operation
       def execute_new_order(action, money, credit_card, options)
-        request = build_request do |xml|
-          add_identification_new_order(xml, options)
-          add_payment(xml, action, money, options)
-          add_account(xml, credit_card)
-          add_customer(xml, credit_card, options)
-          add_three_d_secure(xml, options)
-        end
+        request = build_request
 
-        commit(request)
+        add_identification_new_order(request, options)
+        add_transaction(request, action, money, options)
+        add_payment(request, credit_card)
+        add_customer(request, credit_card, options)
+        add_three_d_secure(request, options)
+
+        commit(request, action)
       end
 
       # Private: Execute operation that depends on authorization code from previous purchase or authorize operation
       def execute_dependant(action, money, authorization, options)
-        request = build_request do |xml|
-          add_identification_authorization(xml, authorization, options)
-          add_payment(xml, action, money, options)
-        end
+        request = build_request
 
-        commit(request)
+        add_identification_authorization(request, authorization, options)
+        add_transaction(request, action, money, options)
+
+        commit(request, action)
       end
 
-      # Private: Build XML wrapping code yielding to code to fill the transaction information
+      # Private: Build request object
       def build_request
-        builder = Nokogiri::XML::Builder.new(encoding: 'UTF-8') do |xml|
-          xml.Request(version: '1.0') do
-            xml.Header { xml.Security(sender: @options[:sender_id]) }
-            xml.Transaction(mode: test? ? 'CONNECTOR_TEST' : 'LIVE', response: 'SYNC', channel: @options[:channel_id]) do
-              xml.User(login: @options[:login], pwd: @options[:pwd])
-              yield xml
-            end
-          end
-        end
-        builder.to_xml
+        request = {}
+        request[:account_id] = options[:account_id]
+        request[:signature] = Base64.strict_encode64(@options[:password]).chomp
+        request[:test] = test? ? 'true' : 'false'
+        request
       end
 
-      # Private: Add identification part to XML for new orders
-      def add_identification_new_order(xml, options)
+      # Private: Add identification part to request for new orders
+      def add_identification_new_order(request, options)
         requires!(options, :order_id)
-        xml.Identification do
-          xml.TransactionID options[:order_id]
+        request[:order_id] = options[:order_id]
+      end
+
+      # Private: Add identification part to request for orders that depend on authorization from previous operation
+      def add_identification_authorization(request, authorization, options)
+        request[:monei_order_id] = authorization
+        request[:order_id] = options[:order_id]
+      end
+
+      # Private: Add payment part to request
+      def add_transaction(request, action, money, options)
+        request[:transaction_type] = tanslate_payment_code(action)
+        request[:description] = options[:description] || options[:order_id]
+        unless money.nil?
+          request[:amount] = amount(money)
+          request[:currency] = options[:currency] || currency(money)
         end
       end
 
-      # Private: Add identification part to XML for orders that depend on authorization from previous operation
-      def add_identification_authorization(xml, authorization, options)
-        xml.Identification do
-          xml.ReferenceID authorization
-          xml.TransactionID options[:order_id]
-        end
+      # Private: Add payment method to request
+      def add_payment(request, credit_card)
+        request[:payment_card_number] = credit_card.number
+        request[:payment_card_exp_month] = credit_card.month
+        request[:payment_card_exp_year] = credit_card.year
+        request[:payment_card_cvc] = credit_card.verification_value
       end
 
-      # Private: Add payment part to XML
-      def add_payment(xml, action, money, options)
-        code = tanslate_payment_code(action)
-
-        xml.Payment(code: code) do
-          xml.Presentation do
-            xml.Amount amount(money)
-            xml.Currency options[:currency] || currency(money)
-            xml.Usage options[:description] || options[:order_id]
-          end unless money.nil?
-        end
-      end
-
-      # Private: Add account part to XML
-      def add_account(xml, credit_card)
-        xml.Account do
-          xml.Holder credit_card.name
-          xml.Number credit_card.number
-          xml.Brand credit_card.brand.upcase
-          xml.Expiry(month: credit_card.month, year: credit_card.year)
-          xml.Verification credit_card.verification_value
-        end
-      end
-
-      # Private: Add customer part to XML
-      def add_customer(xml, credit_card, options)
+      # Private: Add customer part to request
+      def add_customer(request, credit_card, options)
         requires!(options, :billing_address)
         address = options[:billing_address]
-        xml.Customer do
-          xml.Name do
-            xml.Given credit_card.first_name
-            xml.Family credit_card.last_name
-          end
-          xml.Address do
-            xml.Street address[:address1].to_s
-            xml.Zip address[:zip].to_s
-            xml.City address[:city].to_s
-            xml.State address[:state].to_s if address.has_key? :state
-            xml.Country address[:country].to_s
-          end
-          xml.Contact do
-            xml.Email options[:email] || 'noemail@monei.net'
-            xml.Ip options[:ip] || '0.0.0.0'
-          end
-        end
+
+        request[:customer_first_name] = credit_card.first_name
+        request[:customer_last_name] = credit_card.last_name
+        request[:customer_email] = options[:email] || 'support@monei.net'
+
+        request[:customer_billing_address1] = address[:address1].to_s
+        request[:customer_billing_city] = address[:city].to_s
+        request[:customer_billing_state] = address[:state].to_s if address.has_key? :state
+        request[:customer_billing_zip] = address[:zip].to_s
+        request[:customer_billing_country] = address[:country].to_s
       end
 
       # Private : Convert ECI to ResultIndicator
@@ -245,92 +220,126 @@ module ActiveMerchant #:nodoc:
         end
       end
 
-      # Private : Add the 3DSecure infos to XML
-      def add_three_d_secure(xml, options)
+      # Private : Add the 3DSecure infos to request
+      def add_three_d_secure(request, options)
         if options[:three_d_secure]
-          xml.Authentication(type: '3DSecure') do
-            xml.ResultIndicator eci_to_result_indicator options[:three_d_secure][:eci]
-            xml.Parameter(name: 'VERIFICATION_ID') { xml.text options[:three_d_secure][:cavv] }
-            xml.Parameter(name: 'XID') { xml.text options[:three_d_secure][:xid] }
-          end
+          request[:authentication_type] = '3DSecure'
+          request[:authentication_eci] = eci_to_result_indicator options[:three_d_secure][:eci]
+          request[:authentication_cavv] = options[:three_d_secure][:cavv]
+          request[:authentication_xid] = options[:three_d_secure][:xid]
         end
       end
 
-      # Private: Parse XML response from Monei servers
+      # Private: Parse JSON response from Monei servers
       def parse(body)
-        xml = Nokogiri::XML(body)
+        JSON.parse(body)
+      end
+
+      def json_error(raw_response)
+        msg = 'Invalid response received from the MONEI API. Please contact support@monei.net if you continue to receive this message.'
+        msg += " (The raw response returned by the API was #{raw_response.inspect})"
         {
-          unique_id: xml.xpath('//Response/Transaction/Identification/UniqueID').text,
-          status: translate_status_code(xml.xpath('//Response/Transaction/Processing/Status/@code').text),
-          reason: translate_status_code(xml.xpath('//Response/Transaction/Processing/Reason/@code').text),
-          message: xml.xpath('//Response/Transaction/Processing/Return').text
+          'status' => 'error',
+          'message' => msg
         }
       end
 
-      # Private: Send XML transaction to Monei servers and create AM response
-      def commit(xml)
-        url = (test? ? test_url : live_url)
+      def response_error(raw_response)
+        parse(raw_response)
+      rescue JSON::ParserError
+        json_error(raw_response)
+      end
 
-        response = parse(ssl_post(url, post_data(xml), 'Content-Type' => 'application/x-www-form-urlencoded;charset=UTF-8'))
+      def api_request(url, parameters, options = {})
+        raw_response = response = nil
+        begin
+          raw_response = ssl_post(url, post_data(parameters), options)
+          response = parse(raw_response)
+        rescue ResponseError => e
+          raw_response = e.response.body
+          response = response_error(raw_response)
+        rescue JSON::ParserError
+          response = json_error(raw_response)
+        end
+        response
+      end
+
+      # Private: Send transaction to Monei servers and create AM response
+      def commit(request, action)
+        url = (test? ? test_url : live_url)
+        endpoint = tanslate_action_endpoint(action)
+
+        response = api_request(url + endpoint, params(request, action), 'Content-Type' => 'application/json;charset=UTF-8')
+        success = success_from(response)
 
         Response.new(
-          success_from(response),
-          message_from(response),
+          success,
+          message_from(response, success),
           response,
           authorization: authorization_from(response),
           test: test?,
-          error_code: error_code_from(response)
+          error_code: error_code_from(response, success)
         )
       end
 
       # Private: Decide success from servers response
       def success_from(response)
-        response[:status] == :success || response[:status] == :new
+        response['result'] === 'completed'
       end
 
       # Private: Get message from servers response
-      def message_from(response)
-        response[:message]
+      def message_from(response, success)
+        success ? 'Transaction approved' : response.fetch('message', 'No error details')
       end
 
       # Private: Get error code from servers response
-      def error_code_from(response)
-        success_from(response) ? nil : STANDARD_ERROR_CODE[:card_declined]
+      def error_code_from(response, success)
+        success ? nil : STANDARD_ERROR_CODE[:card_declined]
       end
 
       # Private: Get authorization code from servers response
       def authorization_from(response)
-        response[:unique_id]
+        response['monei_order_id']
       end
 
       # Private: Encode POST parameters
-      def post_data(xml)
-        "load=#{CGI.escape(xml)}"
+      def post_data(params)
+        params.clone.to_json
       end
 
-      # Private: Translate Monei status code to native ruby symbols
-      def translate_status_code(code)
-        {
-          '00' => :success,
-          '40' => :neutral,
-          '59' => :waiting_bank,
-          '60' => :rejected_bank,
-          '64' => :waiting_risk,
-          '65' => :rejected_risk,
-          '70' => :rejected_validation,
-          '80' => :waiting,
-          '90' => :new
-        }[code]
+      # Private: generate request params depending on action
+      def params(request, action)
+        if action == :purchase || action == :authorize
+          request = {
+            'charge': request,
+            'context': {
+              ip: options[:ip] || '0.0.0.0',
+              userAgent: options[:user_agent] || 'ActiveMerchant UA'
+            }
+          }
+        end
+        request
       end
 
       # Private: Translate AM operations to Monei operations codes
       def tanslate_payment_code(action)
         {
-          purchase: 'CC.DB',
-          authorize: 'CC.PA',
-          capture: 'CC.CP',
-          refund: 'CC.RF',
-          void: 'CC.RV'
+          purchase: 'sale',
+          authorize: 'auth',
+          capture: 'capture',
+          refund: 'refund',
+          void: 'void'
+        }[action]
+      end
+
+      # Private: Translate AM operations to Monei endpoints
+      def tanslate_action_endpoint(action)
+        {
+          purchase: 'ws/v1/charges/active_merchant',
+          authorize: 'ws/v1/charges/active_merchant',
+          capture: 'checkout/active_merchant/capture',
+          refund: 'checkout/active_merchant/refund',
+          void: 'checkout/active_merchant/void'
         }[action]
       end
     end
