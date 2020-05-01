@@ -9,20 +9,20 @@ module ActiveMerchant #:nodoc:
       SP_SERVICE_VERSION = '1.1'
 
       TRANSACTIONS = {
-        :authorization  => 'PA',
-        :purchase       => 'P',
-        :capture        => 'PAC',
-        :refund         => 'R',
-        :void           => 'VP',
-        :check_purchase => 'D',
-        :check_refund   => 'C',
-        :void_purchase  => 'VP',
-        :void_refund    => 'VR'
+        authorization:    'PA',
+        purchase:         'P',
+        capture:          'PAC',
+        refund:           'R',
+        void:             'VP',
+        check_purchase:   'D',
+        check_refund:     'C',
+        void_purchase:    'VP',
+        void_refund:      'VR'
       }
 
       PROFILE_OPERATIONS = {
-        :new => 'N',
-        :modify => 'M'
+        new: 'N',
+        modify: 'M'
       }
 
       CVD_CODES = {
@@ -41,24 +41,24 @@ module ActiveMerchant #:nodoc:
       }
 
       PERIODS = {
-        :days   => 'D',
-        :weeks  => 'W',
-        :months => 'M',
-        :years  => 'Y'
+        days: 'D',
+        weeks: 'W',
+        months: 'M',
+        years: 'Y'
       }
 
       PERIODICITIES = {
-        :daily     => [:days, 1],
-        :weekly    => [:weeks, 1],
-        :biweekly  => [:weeks, 2],
-        :monthly   => [:months, 1],
-        :bimonthly => [:months, 2],
-        :yearly    => [:years, 1]
+        daily: [:days, 1],
+        weekly: [:weeks, 1],
+        biweekly: [:weeks, 2],
+        monthly: [:months, 1],
+        bimonthly: [:months, 2],
+        yearly: [:years, 1]
       }
 
       RECURRING_OPERATION = {
-        :update => 'M',
-        :cancel => 'C'
+        update: 'M',
+        cancel: 'C'
       }
 
       STATES = {
@@ -256,8 +256,9 @@ module ActiveMerchant #:nodoc:
       end
 
       def prepare_address_for_non_american_countries(options)
-        [ options[:billing_address], options[:shipping_address] ].compact.each do |address|
+        [options[:billing_address], options[:shipping_address]].compact.each do |address|
           next if empty?(address[:country])
+
           unless ['US', 'CA'].include?(address[:country])
             address[:state] = '--'
             address[:zip]   = '000000' unless address[:zip]
@@ -315,6 +316,9 @@ module ActiveMerchant #:nodoc:
         post[:operationType] = options[:operationType] || options[:operation] || secure_profile_action(:new)
         post[:customerCode] = options[:billing_id] || options[:vault_id] || false
         post[:status] = options[:status]
+
+        billing_address = options[:billing_address] || options[:address]
+        post[:trnCardOwner] = billing_address ? billing_address[:name] : nil
       end
 
       def add_recurring_amount(post, money)
@@ -363,6 +367,7 @@ module ActiveMerchant #:nodoc:
           if interval.respond_to? :parts
             parts = interval.parts
             raise ArgumentError.new("Cannot recur with mixed interval (#{interval}). Use only one of: days, weeks, months or years") if parts.length > 1
+
             parts.first
           elsif interval.kind_of? Hash
             requires!(interval, :unit)
@@ -409,10 +414,10 @@ module ActiveMerchant #:nodoc:
         response = parse(ssl_post((use_profile_api ? SECURE_PROFILE_URL : self.live_url), data))
         response[:customer_vault_id] = response[:customerCode] if response[:customerCode]
         build_response(success?(response), message_from(response), response,
-          :test => test? || response[:authCode] == 'TEST',
-          :authorization => authorization_from(response),
-          :cvv_result => CVD_CODES[response[:cvdId]],
-          :avs_result => { :code => AVS_CODES.include?(response[:avsId]) ? AVS_CODES[response[:avsId]] : response[:avsId] }
+          test: test? || response[:authCode] == 'TEST',
+          authorization: authorization_from(response),
+          cvv_result: CVD_CODES[response[:cvdId]],
+          avs_result: { code: AVS_CODES.include?(response[:avsId]) ? AVS_CODES[response[:avsId]] : response[:avsId] }
         )
       end
 

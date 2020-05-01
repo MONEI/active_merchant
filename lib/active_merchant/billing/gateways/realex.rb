@@ -31,7 +31,7 @@ module ActiveMerchant
 
       self.money_format = :cents
       self.default_currency = 'EUR'
-      self.supported_cardtypes = [ :visa, :master, :american_express, :diners_club ]
+      self.supported_cardtypes = [:visa, :master, :american_express, :diners_club]
       self.supported_countries = %w(IE GB FR BE NL LU IT US CA ES)
       self.homepage_url = 'http://www.realexpayments.com/'
       self.display_name = 'Realex'
@@ -42,8 +42,8 @@ module ActiveMerchant
 
       def initialize(options = {})
         requires!(options, :login, :password)
-        options[:refund_hash] = Digest::SHA1.hexdigest(options[:rebate_secret]) if options.has_key?(:rebate_secret)
-        options[:credit_hash] = Digest::SHA1.hexdigest(options[:refund_secret]) if options.has_key?(:refund_secret)
+        options[:refund_hash] = Digest::SHA1.hexdigest(options[:rebate_secret]) if options[:rebate_secret].present?
+        options[:credit_hash] = Digest::SHA1.hexdigest(options[:refund_secret]) if options[:refund_secret].present?
         super
       end
 
@@ -107,8 +107,8 @@ module ActiveMerchant
           (response[:result] == '00'),
           message_from(response),
           response,
-          :test => (response[:message] =~ %r{\[ test system \]}),
-          :authorization => authorization_from(response),
+          test: (response[:message] =~ %r{\[ test system \]}),
+          authorization: authorization_from(response),
           avs_result: AVSResult.new(code: response[:avspostcoderesponse]),
           cvv_result: CVVResult.new(response[:cvnresult])
         )
@@ -138,7 +138,7 @@ module ActiveMerchant
 
       def build_purchase_or_authorization_request(action, money, credit_card, options)
         timestamp = new_timestamp
-        xml = Builder::XmlMarkup.new :indent => 2
+        xml = Builder::XmlMarkup.new indent: 2
         xml.tag! 'request', 'timestamp' => timestamp, 'type' => 'auth' do
           add_merchant_details(xml, options)
           xml.tag! 'orderid', sanitize_order_id(options[:order_id])
@@ -159,7 +159,7 @@ module ActiveMerchant
 
       def build_capture_request(money, authorization, options)
         timestamp = new_timestamp
-        xml = Builder::XmlMarkup.new :indent => 2
+        xml = Builder::XmlMarkup.new indent: 2
         xml.tag! 'request', 'timestamp' => timestamp, 'type' => 'settle' do
           add_merchant_details(xml, options)
           add_amount(xml, money, options)
@@ -172,7 +172,7 @@ module ActiveMerchant
 
       def build_refund_request(money, authorization, options)
         timestamp = new_timestamp
-        xml = Builder::XmlMarkup.new :indent => 2
+        xml = Builder::XmlMarkup.new indent: 2
         xml.tag! 'request', 'timestamp' => timestamp, 'type' => 'rebate' do
           add_merchant_details(xml, options)
           add_transaction_identifiers(xml, authorization, options)
@@ -187,7 +187,7 @@ module ActiveMerchant
 
       def build_credit_request(money, credit_card, options)
         timestamp = new_timestamp
-        xml = Builder::XmlMarkup.new :indent => 2
+        xml = Builder::XmlMarkup.new indent: 2
         xml.tag! 'request', 'timestamp' => timestamp, 'type' => 'credit' do
           add_merchant_details(xml, options)
           xml.tag! 'orderid', sanitize_order_id(options[:order_id])
@@ -203,7 +203,7 @@ module ActiveMerchant
 
       def build_void_request(authorization, options)
         timestamp = new_timestamp
-        xml = Builder::XmlMarkup.new :indent => 2
+        xml = Builder::XmlMarkup.new indent: 2
         xml.tag! 'request', 'timestamp' => timestamp, 'type' => 'void' do
           add_merchant_details(xml, options)
           add_transaction_identifiers(xml, authorization, options)
@@ -216,7 +216,7 @@ module ActiveMerchant
       # Verify initiates an OTB (Open To Buy) request
       def build_verify_request(credit_card, options)
         timestamp = new_timestamp
-        xml = Builder::XmlMarkup.new :indent => 2
+        xml = Builder::XmlMarkup.new indent: 2
         xml.tag! 'request', 'timestamp' => timestamp, 'type' => 'otb' do
           add_merchant_details(xml, options)
           xml.tag! 'orderid', sanitize_order_id(options[:order_id])
@@ -256,9 +256,7 @@ module ActiveMerchant
 
       def add_merchant_details(xml, options)
         xml.tag! 'merchantid', @options[:login]
-        if options[:account] || @options[:account]
-          xml.tag! 'account', (options[:account] || @options[:account])
-        end
+        xml.tag! 'account', (options[:account] || @options[:account]) if options[:account] || @options[:account]
       end
 
       def add_transaction_identifiers(xml, authorization, options)
@@ -270,6 +268,7 @@ module ActiveMerchant
 
       def add_comments(xml, options)
         return unless options[:description]
+
         xml.tag! 'comments' do
           xml.tag! 'comment', options[:description], 'id' => 1
         end
@@ -307,6 +306,7 @@ module ActiveMerchant
 
       def add_three_d_secure(xml, options)
         return unless three_d_secure = options[:three_d_secure]
+
         version = three_d_secure.fetch(:version, '')
         xml.tag! 'mpi' do
           if version =~ /^2/

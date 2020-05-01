@@ -12,13 +12,15 @@ module ActiveMerchant #:nodoc:
       self.supported_countries = ['AR', 'BR', 'CL', 'CO', 'MX', 'PA', 'PE']
       self.default_currency = 'USD'
       self.money_format = :dollars
-      self.supported_cardtypes = [:visa, :master, :american_express, :diners_club]
+      self.supported_cardtypes = [:visa, :master, :american_express, :diners_club, :naranja, :cabal]
 
       BRAND_MAP = {
         'visa' => 'VISA',
         'master' => 'MASTERCARD',
         'american_express' => 'AMEX',
-        'diners_club' => 'DINERS'
+        'diners_club' => 'DINERS',
+        'naranja' => 'NARANJA',
+        'cabal' => 'CABAL'
       }
 
       MINIMUMS = {
@@ -178,6 +180,7 @@ module ActiveMerchant #:nodoc:
 
       def billing_address_fields(options)
         return unless address = options[:billing_address]
+
         billing_address = {}
         billing_address[:street1] = address[:address1]
         billing_address[:street2] = address[:address2]
@@ -195,6 +198,7 @@ module ActiveMerchant #:nodoc:
           buyer[:fullName] = buyer_hash[:name]
           buyer[:dniNumber] = buyer_hash[:dni_number]
           buyer[:dniType] = buyer_hash[:dni_type]
+          buyer[:merchantBuyerId] = buyer_hash[:merchant_buyer_id]
           buyer[:cnpj] = buyer_hash[:cnpj] if @options[:payment_country] == 'BR'
           buyer[:emailAddress] = buyer_hash[:email]
           buyer[:contactPhone] = (options[:billing_address][:phone] if options[:billing_address]) || (options[:shipping_address][:phone] if options[:shipping_address]) || ''
@@ -203,6 +207,7 @@ module ActiveMerchant #:nodoc:
           buyer[:fullName] = payment_method.name.strip
           buyer[:dniNumber] = options[:dni_number]
           buyer[:dniType] = options[:dni_type]
+          buyer[:merchantBuyerId] = options[:merchant_buyer_id]
           buyer[:cnpj] = options[:cnpj] if @options[:payment_country] == 'BR'
           buyer[:emailAddress] = options[:email]
           buyer[:contactPhone] = (options[:billing_address][:phone] if options[:billing_address]) || (options[:shipping_address][:phone] if options[:shipping_address]) || ''
@@ -213,6 +218,7 @@ module ActiveMerchant #:nodoc:
 
       def shipping_address_fields(options)
         return unless address = options[:shipping_address]
+
         shipping_address = {}
         shipping_address[:street1] = address[:address1]
         shipping_address[:street2] = address[:address2]
@@ -288,6 +294,7 @@ module ActiveMerchant #:nodoc:
 
       def add_process_without_cvv2(payment_method, options)
         return true if payment_method.verification_value.blank? && options[:cvv].blank?
+
         false
       end
 
@@ -340,8 +347,8 @@ module ActiveMerchant #:nodoc:
 
       def headers
         {
-          'Content-Type'  => 'application/json',
-          'Accept'  => 'application/json'
+          'Content-Type' => 'application/json',
+          'Accept' => 'application/json'
         }
       end
 
@@ -375,10 +382,12 @@ module ActiveMerchant #:nodoc:
         case action
         when 'store'
           return response['code'] if success
+
           error_description = response['creditCardToken']['errorDescription'] if response['creditCardToken']
           response['error'] || error_description || 'FAILED'
         when 'verify_credentials'
           return 'VERIFIED' if success
+
           'FAILED'
         else
           if response['transactionResponse']
@@ -386,6 +395,7 @@ module ActiveMerchant #:nodoc:
             response_code = response['transactionResponse']['responseCode'] || response['transactionResponse']['pendingReason']
           end
           return response_code if success
+
           response['error'] || response_message || response_code || 'FAILED'
         end
       end
@@ -431,7 +441,7 @@ module ActiveMerchant #:nodoc:
           false,
           message_from('', false, response),
           response,
-          :test => test?
+          test: test?
         )
       end
 

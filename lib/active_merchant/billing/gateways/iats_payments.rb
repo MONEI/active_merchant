@@ -14,16 +14,16 @@ module ActiveMerchant #:nodoc:
       self.display_name = 'iATS Payments'
 
       ACTIONS = {
-        purchase: 'ProcessCreditCardV1',
-        purchase_check: 'ProcessACHEFTV1',
-        refund: 'ProcessCreditCardRefundWithTransactionIdV1',
-        refund_check: 'ProcessACHEFTRefundWithTransactionIdV1',
-        store: 'CreateCreditCardCustomerCodeV1',
-        unstore: 'DeleteCustomerCodeV1'
+        purchase: 'ProcessCreditCard',
+        purchase_check: 'ProcessACHEFT',
+        refund: 'ProcessCreditCardRefundWithTransactionId',
+        refund_check: 'ProcessACHEFTRefundWithTransactionId',
+        store: 'CreateCreditCardCustomerCode',
+        unstore: 'DeleteCustomerCode'
       }
 
       def initialize(options={})
-        if(options[:login])
+        if options[:login]
           ActiveMerchant.deprecated("The 'login' option is deprecated in favor of 'agent_code' and will be removed in a future version.")
           options[:agent_code] = options[:login]
         end
@@ -96,11 +96,14 @@ module ActiveMerchant #:nodoc:
 
       def add_address(post, options)
         billing_address = options[:billing_address] || options[:address]
-        if(billing_address)
+        if billing_address
           post[:address] = billing_address[:address1]
           post[:city] = billing_address[:city]
           post[:state] = billing_address[:state]
           post[:zip_code] = billing_address[:zip]
+          post[:phone] = billing_address[:phone] if billing_address[:phone]
+          post[:email] = billing_address[:email] if billing_address[:email]
+          post[:country] = billing_address[:country] if billing_address[:country]
         end
       end
 
@@ -178,12 +181,12 @@ module ActiveMerchant #:nodoc:
 
       def endpoints
         {
-          purchase: 'ProcessLink.asmx',
-          purchase_check: 'ProcessLink.asmx',
-          refund: 'ProcessLink.asmx',
-          refund_check: 'ProcessLink.asmx',
-          store: 'CustomerLink.asmx',
-          unstore: 'CustomerLink.asmx'
+          purchase: 'ProcessLinkv3.asmx',
+          purchase_check: 'ProcessLinkv3.asmx',
+          refund: 'ProcessLinkv3.asmx',
+          refund_check: 'ProcessLinkv3.asmx',
+          store: 'CustomerLinkv3.asmx',
+          unstore: 'CustomerLinkv3.asmx'
         }
       end
 
@@ -217,7 +220,7 @@ module ActiveMerchant #:nodoc:
       end
 
       def recursively_parse_element(node, response)
-        if(node.has_elements?)
+        if node.has_elements?
           node.elements.each { |n| recursively_parse_element(n, response) }
         else
           response[dexmlize_param_name(node.name)] = (node.text ? node.text.strip : nil)
@@ -235,7 +238,7 @@ module ActiveMerchant #:nodoc:
       def message_from(response)
         if !successful_result_message?(response) && response[:authorization_result]
           return response[:authorization_result].strip
-        elsif(response[:status] == 'Failure')
+        elsif response[:status] == 'Failure'
           return response[:errors]
         else
           response[:status]
@@ -266,7 +269,7 @@ module ActiveMerchant #:nodoc:
 
       def post_data(action, parameters = {})
         xml = Builder::XmlMarkup.new
-        xml.instruct!(:xml, :version => '1.0', :encoding => 'utf-8')
+        xml.instruct!(:xml, version: '1.0', encoding: 'utf-8')
         xml.tag! 'soap12:Envelope', envelope_namespaces do
           xml.tag! 'soap12:Body' do
             xml.tag! ACTIONS[action], { 'xmlns' => 'https://www.iatspayments.com/NetGate/' } do

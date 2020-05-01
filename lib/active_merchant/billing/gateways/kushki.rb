@@ -4,8 +4,8 @@ module ActiveMerchant #:nodoc:
       self.display_name = 'Kushki'
       self.homepage_url = 'https://www.kushkipagos.com'
 
-      self.test_url = 'https://api-uat.kushkipagos.com/v1/'
-      self.live_url = 'https://api.kushkipagos.com/v1/'
+      self.test_url = 'https://api-uat.kushkipagos.com/'
+      self.live_url = 'https://api.kushkipagos.com/'
 
       self.supported_countries = ['CL', 'CO', 'EC', 'MX', 'PE']
       self.default_currency = 'USD'
@@ -22,6 +22,23 @@ module ActiveMerchant #:nodoc:
           r.process { tokenize(amount, payment_method, options) }
           r.process { charge(amount, r.authorization, options) }
         end
+      end
+
+      def authorize(amount, payment_method, options={})
+        MultiResponse.run() do |r|
+          r.process { tokenize(amount, payment_method, options) }
+          r.process { preauthorize(amount, r.authorization, options) }
+        end
+      end
+
+      def capture(amount, authorization, options={})
+        action = 'capture'
+
+        post = {}
+        post[:ticketNumber] = authorization
+        add_invoice(action, post, amount, options)
+
+        commit(action, post)
       end
 
       def refund(amount, authorization, options={})
@@ -75,6 +92,16 @@ module ActiveMerchant #:nodoc:
         commit(action, post)
       end
 
+      def preauthorize(amount, authorization, options)
+        action = 'preAuthorization'
+
+        post = {}
+        add_reference(post, authorization, options)
+        add_invoice(action, post, amount, options)
+
+        commit(action, post)
+      end
+
       def add_invoice(action, post, money, options)
         if action == 'tokenize'
           post[:totalAmount] = amount(money).to_f
@@ -94,9 +121,7 @@ module ActiveMerchant #:nodoc:
         sum[:iva] = 0
         sum[:subtotalIva0] = 0
 
-        if sum[:currency] != 'COP'
-          sum[:ice] = 0
-        end
+        sum[:ice] = 0 if sum[:currency] != 'COP'
       end
 
       def add_amount_by_country(sum, options)
@@ -133,15 +158,18 @@ module ActiveMerchant #:nodoc:
         'tokenize' => 'tokens',
         'charge' => 'charges',
         'void' => 'charges',
-        'refund' => 'refund'
+        'refund' => 'refund',
+        'preAuthorization' => 'preAuthorization',
+        'capture' => 'capture'
       }
 
       def commit(action, params)
-        response = begin
-          parse(ssl_invoke(action, params))
-        rescue ResponseError => e
-          parse(e.response.body)
-        end
+        response =
+          begin
+            parse(ssl_invoke(action, params))
+          rescue ResponseError => e
+            parse(e.response.body)
+          end
 
         success = success_from(response)
 
@@ -179,9 +207,9 @@ module ActiveMerchant #:nodoc:
         base_url = test? ? test_url : live_url
 
         if ['void', 'refund'].include?(action)
-          base_url + ENDPOINT[action] + '/' + params[:ticketNumber].to_s
+          base_url + 'v1/' + ENDPOINT[action] + '/' + params[:ticketNumber].to_s
         else
-          base_url + ENDPOINT[action]
+          base_url + 'card/v1/' + ENDPOINT[action]
         end
       end
 

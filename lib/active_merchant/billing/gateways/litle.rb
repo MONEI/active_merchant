@@ -164,21 +164,21 @@ module ActiveMerchant #:nodoc:
       }
 
       AVS_RESPONSE_CODE = {
-          '00' => 'Y',
-          '01' => 'X',
-          '02' => 'D',
-          '10' => 'Z',
-          '11' => 'W',
-          '12' => 'A',
-          '13' => 'A',
-          '14' => 'P',
-          '20' => 'N',
-          '30' => 'S',
-          '31' => 'R',
-          '32' => 'U',
-          '33' => 'R',
-          '34' => 'I',
-          '40' => 'E'
+        '00' => 'Y',
+        '01' => 'X',
+        '02' => 'D',
+        '10' => 'Z',
+        '11' => 'W',
+        '12' => 'A',
+        '13' => 'A',
+        '14' => 'P',
+        '20' => 'N',
+        '30' => 'S',
+        '31' => 'R',
+        '32' => 'U',
+        '33' => 'R',
+        '34' => 'I',
+        '40' => 'E'
       }
 
       def void_type(kind)
@@ -193,7 +193,7 @@ module ActiveMerchant #:nodoc:
 
       def refund_type(payment)
         _, kind, _ = split_authorization(payment)
-        if check?(payment) || kind  == 'echeckSales'
+        if check?(payment) || kind == 'echeckSales'
           :echeckCredit
         else
           :credit
@@ -202,6 +202,7 @@ module ActiveMerchant #:nodoc:
 
       def check?(payment_method)
         return false if payment_method.is_a?(String)
+
         card_brand(payment_method) == 'check'
       end
 
@@ -381,6 +382,7 @@ module ActiveMerchant #:nodoc:
 
       def order_source(options={})
         return options[:order_source] unless options[:stored_credential]
+
         order_source = nil
 
         case options[:stored_credential][:reason_type]
@@ -447,8 +449,8 @@ module ActiveMerchant #:nodoc:
         options = {
           authorization: authorization_from(kind, parsed, money),
           test: test?,
-          :avs_result => { :code => AVS_RESPONSE_CODE[parsed[:fraudResult_avsResult]] },
-          :cvv_result => parsed[:fraudResult_cardValidationResult]
+          avs_result: { code: AVS_RESPONSE_CODE[parsed[:fraudResult_avsResult]] },
+          cvv_result: parsed[:fraudResult_cardValidationResult]
         }
 
         Response.new(success_from(kind, parsed), parsed[:message], parsed, options)
@@ -456,6 +458,7 @@ module ActiveMerchant #:nodoc:
 
       def success_from(kind, parsed)
         return (parsed[:response] == '000') unless kind == :registerToken
+
         %w(000 801 802).include?(parsed[:response])
       end
 

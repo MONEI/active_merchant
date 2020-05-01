@@ -6,23 +6,23 @@ class SagePayTest < Test::Unit::TestCase
   def setup
     @gateway = SagePayGateway.new(login: 'X')
 
-    @credit_card = credit_card('4242424242424242', :brand => 'visa')
-    @electron_credit_card = credit_card('4245190000000000', :brand => 'visa')
+    @credit_card = credit_card('4242424242424242', brand: 'visa')
+    @electron_credit_card = credit_card('4245190000000000', brand: 'visa')
     @options = {
-      :billing_address => {
-        :name => 'Tekin Suleyman',
-        :address1 => 'Flat 10 Lapwing Court',
-        :address2 => 'West Didsbury',
-        :city => 'Manchester',
-        :county => 'Greater Manchester',
-        :country => 'GB',
-        :zip => 'M20 2PS'
+      billing_address: {
+        name: 'Tekin Suleyman',
+        address1: 'Flat 10 Lapwing Court',
+        address2: 'West Didsbury',
+        city: 'Manchester',
+        county: 'Greater Manchester',
+        country: 'GB',
+        zip: 'M20 2PS'
       },
-      :order_id => '1',
-      :description => 'Store purchase',
-      :ip => '86.150.65.37',
-      :email => 'tekin@tekin.co.uk',
-      :phone => '0161 123 4567'
+      order_id: '1',
+      description: 'Store purchase',
+      ip: '86.150.65.37',
+      email: 'tekin@tekin.co.uk',
+      phone: '0161 123 4567'
     }
     @amount = 100
   end
@@ -92,18 +92,18 @@ class SagePayTest < Test::Unit::TestCase
   end
 
   def test_dont_send_fractional_amount_for_chinese_yen
-    @amount = 100_00  # 100 YEN
+    @amount = 100_00 # 100 YEN
     @options[:currency] = 'JPY'
 
-    @gateway.expects(:add_pair).with({}, :Amount, '100', :required => true)
-    @gateway.expects(:add_pair).with({}, :Currency, 'JPY', :required => true)
+    @gateway.expects(:add_pair).with({}, :Amount, '100', required: true)
+    @gateway.expects(:add_pair).with({}, :Currency, 'JPY', required: true)
 
     @gateway.send(:add_amount, {}, @amount, @options)
   end
 
   def test_send_fractional_amount_for_british_pounds
-    @gateway.expects(:add_pair).with({}, :Amount, '1.00', :required => true)
-    @gateway.expects(:add_pair).with({}, :Currency, 'GBP', :required => true)
+    @gateway.expects(:add_pair).with({}, :Amount, '1.00', required: true)
+    @gateway.expects(:add_pair).with({}, :Currency, 'GBP', required: true)
 
     @gateway.send(:add_amount, {}, @amount, @options)
   end
@@ -469,7 +469,7 @@ CV2Result=NOTPROVIDED
 DeclineCode=00
 ExpiryDate=0616
 BankAuthCode=999777
-  TRANSCRIPT
+    TRANSCRIPT
   end
 
   def scrubbed_transcript
@@ -490,6 +490,6 @@ CV2Result=NOTPROVIDED
 DeclineCode=00
 ExpiryDate=0616
 BankAuthCode=999777
-  TRANSCRIPT
+    TRANSCRIPT
   end
 end

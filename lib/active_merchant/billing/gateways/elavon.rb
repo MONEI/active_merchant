@@ -17,15 +17,15 @@ module ActiveMerchant #:nodoc:
 
       self.delimiter = "\n"
       self.actions = {
-        :purchase => 'CCSALE',
-        :credit => 'CCCREDIT',
-        :refund => 'CCRETURN',
-        :authorize => 'CCAUTHONLY',
-        :capture => 'CCFORCE',
-        :capture_complete => 'CCCOMPLETE',
-        :void => 'CCDELETE',
-        :store => 'CCGETTOKEN',
-        :update => 'CCUPDATETOKEN',
+        purchase: 'CCSALE',
+        credit: 'CCCREDIT',
+        refund: 'CCRETURN',
+        authorize: 'CCAUTHONLY',
+        capture: 'CCFORCE',
+        capture_complete: 'CCCOMPLETE',
+        void: 'CCDELETE',
+        store: 'CCGETTOKEN',
+        update: 'CCUPDATETOKEN',
       }
 
       def initialize(options = {})
@@ -47,6 +47,7 @@ module ActiveMerchant #:nodoc:
         add_customer_data(form, options)
         add_test_mode(form, options)
         add_ip(form, options)
+        add_ssl_dynamic_dba(form, options)
         commit(:purchase, money, form, options)
       end
 
@@ -60,6 +61,7 @@ module ActiveMerchant #:nodoc:
         add_customer_data(form, options)
         add_test_mode(form, options)
         add_ip(form, options)
+        add_ssl_dynamic_dba(form, options)
         commit(:authorize, money, form, options)
       end
 
@@ -98,9 +100,7 @@ module ActiveMerchant #:nodoc:
       end
 
       def credit(money, creditcard, options = {})
-        if creditcard.is_a?(String)
-          raise ArgumentError, 'Reference credits are not supported. Please supply the original credit card or use the #refund method.'
-        end
+        raise ArgumentError, 'Reference credits are not supported. Please supply the original credit card or use the #refund method.' if creditcard.is_a?(String)
 
         form = {}
         add_invoice(form, options)
@@ -174,9 +174,7 @@ module ActiveMerchant #:nodoc:
         form[:card_number] = creditcard.number
         form[:exp_date] = expdate(creditcard)
 
-        if creditcard.verification_value?
-          add_verification_value(form, creditcard)
-        end
+        add_verification_value(form, creditcard) if creditcard.verification_value?
 
         form[:first_name] = truncate(creditcard.first_name, 20)
         form[:last_name] = truncate(creditcard.last_name, 30)
@@ -253,6 +251,10 @@ module ActiveMerchant #:nodoc:
         form[:cardholder_ip] = options[:ip] if options.has_key?(:ip)
       end
 
+      def add_ssl_dynamic_dba(form, options)
+        form[:dynamic_dba] = options[:dba] if options.has_key?(:dba)
+      end
+
       def message_from(response)
         success?(response) ? response['result_message'] : response['errorMessage']
       end
@@ -268,10 +270,10 @@ module ActiveMerchant #:nodoc:
         response = parse(ssl_post(test? ? self.test_url : self.live_url, post_data(parameters, options)))
 
         Response.new(response['result'] == '0', message_from(response), response,
-          :test => @options[:test] || test?,
-          :authorization => authorization_from(response),
-          :avs_result => { :code => response['avs_response'] },
-          :cvv_result => response['cvv2_response']
+          test: @options[:test] || test?,
+          authorization: authorization_from(response),
+          avs_result: { code: response['avs_response'] },
+          cvv_result: response['cvv2_response']
         )
       end
 
@@ -291,6 +293,7 @@ module ActiveMerchant #:nodoc:
 
       def custom_field?(field_name, options)
         return true if options[:custom_fields]&.include?(field_name.to_sym)
+
         field_name == :customer_number
       end
 
@@ -314,7 +317,6 @@ module ActiveMerchant #:nodoc:
         }
         resp
       end
-
     end
   end
 end

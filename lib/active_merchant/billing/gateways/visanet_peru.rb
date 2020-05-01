@@ -21,7 +21,7 @@ module ActiveMerchant #:nodoc:
       def purchase(amount, payment_method, options={})
         MultiResponse.run() do |r|
           r.process { authorize(amount, payment_method, options) }
-          r.process { capture(r.authorization, options) }
+          r.process { capture(amount, r.authorization, options) }
         end
       end
 
@@ -37,7 +37,7 @@ module ActiveMerchant #:nodoc:
         commit('authorize', params, options)
       end
 
-      def capture(authorization, options={})
+      def capture(amount, authorization, options={})
         params = {}
         options[:id_unico] = split_authorization(authorization)[1]
         add_auth_order_id(params, authorization, options)
@@ -155,9 +155,9 @@ module ActiveMerchant #:nodoc:
           success_from(response),
           message_from(response, options, action),
           response,
-          :test => test?,
-          :authorization => authorization_from(params, response, options),
-          :error_code => response['errorCode']
+          test: test?,
+          authorization: authorization_from(params, response, options),
+          error_code: response['errorCode']
         )
       end
 
@@ -213,6 +213,7 @@ module ActiveMerchant #:nodoc:
 
       def action_code_description(response)
         return nil unless response['data']
+
         response['data']['DSC_COD_ACCION']
       end
 
@@ -229,9 +230,9 @@ module ActiveMerchant #:nodoc:
           false,
           message_from(response, options, action),
           response,
-          :test => test?,
-          :authorization => response['transactionUUID'],
-          :error_code => response['errorCode']
+          test: test?,
+          authorization: response['transactionUUID'],
+          error_code: response['errorCode']
         )
       end
 

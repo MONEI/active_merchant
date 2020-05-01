@@ -151,7 +151,7 @@ module ActiveMerchant #:nodoc:
 
       def authorize(money, creditcard_or_billing_id, options = {})
         parameters = {
-          :amount => amount(money),
+          amount: amount(money),
         }
 
         add_order_id(parameters, options)
@@ -159,6 +159,8 @@ module ActiveMerchant #:nodoc:
         add_customer_data(parameters, options)
         add_payment_source(parameters, creditcard_or_billing_id)
         add_addresses(parameters, options)
+        add_custom_fields(parameters, options)
+
         commit('preauth', parameters)
       end
 
@@ -166,7 +168,7 @@ module ActiveMerchant #:nodoc:
       # to process a purchase are an amount in cents or a money object and a creditcard object or billingid string.
       def purchase(money, creditcard_or_billing_id, options = {})
         parameters = {
-          :amount => amount(money),
+          amount: amount(money),
         }
 
         add_order_id(parameters, options)
@@ -174,6 +176,8 @@ module ActiveMerchant #:nodoc:
         add_customer_data(parameters, options)
         add_payment_source(parameters, creditcard_or_billing_id)
         add_addresses(parameters, options)
+        add_custom_fields(parameters, options)
+
         commit('sale', parameters)
       end
 
@@ -183,10 +187,11 @@ module ActiveMerchant #:nodoc:
       def capture(money, authorization, options = {})
         transaction_id, _ = split_authorization(authorization)
         parameters = {
-          :amount => amount(money),
-          :transid => transaction_id,
+          amount: amount(money),
+          transid: transaction_id,
         }
         add_aggregator(parameters, options)
+        add_custom_fields(parameters, options)
 
         commit('postauth', parameters)
       end
@@ -195,11 +200,14 @@ module ActiveMerchant #:nodoc:
       # that you want to refund, and a TC transid for the transaction that you are refunding.
       def refund(money, identification, options = {})
         transaction_id, _ = split_authorization(identification)
+
         parameters = {
-          :amount => amount(money),
-          :transid => transaction_id
+          amount: amount(money),
+          transid: transaction_id
         }
+
         add_aggregator(parameters, options)
+        add_custom_fields(parameters, options)
 
         commit('credit', parameters)
       end
@@ -231,9 +239,11 @@ module ActiveMerchant #:nodoc:
         action = (VOIDABLE_ACTIONS - ['preauth']).include?(original_action) ? 'void' : 'reversal'
 
         parameters = {
-          :transid => transaction_id,
+          transid: transaction_id,
         }
+
         add_aggregator(parameters, options)
+        add_custom_fields(parameters, options)
 
         commit(action, parameters)
       end
@@ -254,27 +264,28 @@ module ActiveMerchant #:nodoc:
 
         requires!(options, [:periodicity, :bimonthly, :monthly, :biweekly, :weekly, :yearly, :daily])
 
-        cycle = case options[:periodicity]
-        when :monthly
-          '1m'
-        when :bimonthly
-          '2m'
-        when :weekly
-          '1w'
-        when :biweekly
-          '2w'
-        when :yearly
-          '1y'
-        when :daily
-          '1d'
-        end
+        cycle =
+          case options[:periodicity]
+          when :monthly
+            '1m'
+          when :bimonthly
+            '2m'
+          when :weekly
+            '1w'
+          when :biweekly
+            '2w'
+          when :yearly
+            '1y'
+          when :daily
+            '1d'
+          end
 
         parameters = {
-          :amount => amount(money),
-          :cycle => cycle,
-          :verify => options[:verify] || 'y',
-          :billingid => options[:billingid] || nil,
-          :payments => options[:payments] || nil,
+          amount: amount(money),
+          cycle: cycle,
+          verify: options[:verify] || 'y',
+          billingid: options[:billingid] || nil,
+          payments: options[:payments] || nil,
         }
 
         add_creditcard(parameters, creditcard)
@@ -288,12 +299,14 @@ module ActiveMerchant #:nodoc:
 
       def store(creditcard, options = {})
         parameters = {
-          :verify => options[:verify] || 'y',
-          :billingid => options[:billingid] || options[:billing_id] || nil,
+          verify: options[:verify] || 'y',
+          billingid: options[:billingid] || options[:billing_id] || nil,
         }
 
         add_creditcard(parameters, creditcard)
         add_addresses(parameters, options)
+        add_custom_fields(parameters, options)
+
         commit('store', parameters)
       end
 
@@ -301,8 +314,10 @@ module ActiveMerchant #:nodoc:
       # unstore() the information will be removed and a Response object will be returned indicating the success of the action.
       def unstore(identification, options = {})
         parameters = {
-          :billingid => identification,
+          billingid: identification,
         }
+
+        add_custom_fields(parameters, options)
 
         commit('unstore', parameters)
       end
@@ -320,6 +335,12 @@ module ActiveMerchant #:nodoc:
       end
 
       private
+
+      def add_custom_fields(params, options)
+        options[:custom_fields]&.each do |key, value|
+          params[key.to_sym] = value
+        end
+      end
 
       def add_aggregator(params, options)
         if @options[:aggregator_id] || application_id != Gateway.application_id
@@ -396,9 +417,7 @@ module ActiveMerchant #:nodoc:
         # symbol keys. Before sending our input to TCLink, we convert all our keys to strings and dump the symbol keys.
         # We also remove any pairs with nil values, as these confuse TCLink.
         parameters.keys.reverse_each do |key|
-          if parameters[key]
-            parameters[key.to_s] = parameters[key]
-          end
+          parameters[key.to_s] = parameters[key] if parameters[key]
           parameters.delete(key)
         end
       end
@@ -419,16 +438,16 @@ module ActiveMerchant #:nodoc:
                  TCLink.send(parameters)
                else
                  parse(ssl_post(self.live_url, post_data(parameters)))
-        end
+               end
 
         # to be considered successful, transaction status must be either "approved" or "accepted"
         success = SUCCESS_TYPES.include?(data['status'])
         message = message_from(data)
         Response.new(success, message, data,
-          :test => test?,
-          :authorization => authorization_from(action, data),
-          :cvv_result => data['cvv'],
-          :avs_result => { :code => data['avs'] }
+          test: test?,
+          authorization: authorization_from(action, data),
+          cvv_result: data['cvv'],
+          avs_result: { code: data['avs'] }
         )
       end
 
@@ -463,7 +482,7 @@ module ActiveMerchant #:nodoc:
       end
 
       def split_authorization(authorization)
-        authorization.split('|')
+        authorization&.split('|')
       end
     end
   end

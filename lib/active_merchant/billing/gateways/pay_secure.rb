@@ -8,10 +8,10 @@ module ActiveMerchant #:nodoc:
       # Currently Authorization and Capture is not implemented because
       # capturing requires the original credit card information
       TRANSACTIONS = {
-        :purchase       => 'PURCHASE',
-        :authorization  => 'AUTHORISE',
-        :capture        => 'ADVICE',
-        :credit         => 'REFUND'
+        purchase: 'PURCHASE',
+        authorization: 'AUTHORISE',
+        capture: 'ADVICE',
+        credit: 'REFUND'
       }
 
       SUCCESS = 'Accepted'
@@ -43,7 +43,7 @@ module ActiveMerchant #:nodoc:
       # Used for capturing, which is currently not supported.
       def add_reference(post, identification)
         auth, trans_id = identification.split(';')
-        post[:authnum]    = auth
+        post[:authnum] = auth
         post[:transid] = trans_id
       end
 
@@ -69,8 +69,8 @@ module ActiveMerchant #:nodoc:
         response = parse(ssl_post(self.live_url, post_data(action, parameters)))
 
         Response.new(successful?(response), message_from(response), response,
-          :test => test_response?(response),
-          :authorization => authorization_from(response)
+          test: test_response?(response),
+          authorization: authorization_from(response)
         )
       end
 
@@ -79,7 +79,7 @@ module ActiveMerchant #:nodoc:
       end
 
       def authorization_from(response)
-        [ response[:authnum], response[:transid] ].compact.join(';')
+        [response[:authnum], response[:transid]].compact.join(';')
       end
 
       def test_response?(response)

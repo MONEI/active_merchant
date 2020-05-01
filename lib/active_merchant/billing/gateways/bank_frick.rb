@@ -97,7 +97,7 @@ module ActiveMerchant #:nodoc:
           post[:zip]     = address[:zip].to_s
           post[:city]    = address[:city].to_s
           post[:country] = address[:country].to_s
-          post[:state]   = address[:state].blank?  ? 'n/a' : address[:state]
+          post[:state]   = address[:state].blank? ? 'n/a' : address[:state]
         end
       end
 
@@ -119,7 +119,7 @@ module ActiveMerchant #:nodoc:
       end
 
       def parse(body)
-        results  = {}
+        results = {}
         xml = Nokogiri::XML(body)
         resp = xml.xpath('//Response/Transaction/Identification')
         resp.children.each do |element|
@@ -166,7 +166,7 @@ module ActiveMerchant #:nodoc:
       end
 
       def build_xml_request(action, data)
-        xml = Builder::XmlMarkup.new :indent => 2
+        xml = Builder::XmlMarkup.new indent: 2
         xml.Request(version: '1.0') do
           xml.Header do
             xml.Security(sender: @options[:sender], type: 'MERCHANT')

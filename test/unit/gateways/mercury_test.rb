@@ -9,11 +9,11 @@ class MercuryTest < Test::Unit::TestCase
     @gateway = MercuryGateway.new(fixtures(:mercury))
 
     @amount = 100
-    @credit_card = credit_card('5499990123456781', :brand => 'master')
+    @credit_card = credit_card('5499990123456781', brand: 'master')
     @declined_card = credit_card('4000300011112220')
 
     @options = {
-      :order_id => 'c111111111.1'
+      order_id: 'c111111111.1'
     }
   end
 
@@ -92,7 +92,7 @@ class MercuryTest < Test::Unit::TestCase
 
   def test_card_present_with_max_length_track_1_data
     track_data    = '%B373953192351004^CARDUSER/JOHN^200910100000019301000000877000000930001234567?'
-    stripped_data =  'B373953192351004^CARDUSER/JOHN^200910100000019301000000877000000930001234567'
+    stripped_data = 'B373953192351004^CARDUSER/JOHN^200910100000019301000000877000000930001234567'
     @credit_card.track_data = track_data
     response = stub_comms do
       @gateway.purchase(@amount, @credit_card, @options)

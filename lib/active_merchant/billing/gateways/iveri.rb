@@ -60,12 +60,16 @@ module ActiveMerchant #:nodoc:
       end
 
       def verify(credit_card, options={})
-        authorize(0, credit_card, options)
+        MultiResponse.run(:use_first_response) do |r|
+          r.process { authorize(100, credit_card, options) }
+          r.process(:ignore_result) { void(r.authorization, options) }
+        end
       end
 
       def verify_credentials
         void = void('', options)
-        return true if void.message ==  'Missing OriginalMerchantTrace'
+        return true if void.message == 'Missing OriginalMerchantTrace'
+
         false
       end
 
@@ -83,7 +87,7 @@ module ActiveMerchant #:nodoc:
       private
 
       def build_xml_envelope(vxml)
-        builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
+        builder = Nokogiri::XML::Builder.new(encoding: 'UTF-8') do |xml|
           xml[:soap].Envelope 'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance', 'xmlns:xsd' => 'http://www.w3.org/2001/XMLSchema', 'xmlns:soap' => 'http://schemas.xmlsoap.org/soap/envelope/' do
             xml[:soap].Body do
               xml.Execute 'xmlns' => 'http://iveri.com/' do
@@ -150,11 +154,12 @@ module ActiveMerchant #:nodoc:
       end
 
       def commit(post)
-        raw_response = begin
-          ssl_post(live_url, build_xml_envelope(post), headers(post))
-        rescue ActiveMerchant::ResponseError => e
-          e.response.body
-        end
+        raw_response =
+          begin
+            ssl_post(live_url, build_xml_envelope(post), headers(post))
+          rescue ActiveMerchant::ResponseError => e
+            e.response.body
+          end
 
         parsed = parse(raw_response)
         succeeded = success_from(parsed)
@@ -201,7 +206,7 @@ module ActiveMerchant #:nodoc:
       def parse_element(parsed, node)
         if !node.attributes.empty?
           node.attributes.each do |a|
-            parsed[underscore(node.name)+ '_' + underscore(a[1].name)] = a[1].value
+            parsed[underscore(node.name) + '_' + underscore(a[1].name)] = a[1].value
           end
         end
 
@@ -234,9 +239,7 @@ module ActiveMerchant #:nodoc:
       end
 
       def error_code_from(response, succeeded)
-        unless succeeded
-          response['result_code']
-        end
+        response['result_code'] unless succeeded
       end
 
       def underscore(camel_cased_word)

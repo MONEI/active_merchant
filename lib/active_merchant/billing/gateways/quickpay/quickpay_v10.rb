@@ -154,8 +154,8 @@ module ActiveMerchant
         end
 
         Response.new(success, message_from(success, response), response,
-          :test => test?,
-          :authorization => authorization_from(response)
+          test: test?,
+          authorization: authorization_from(response)
         )
       end
 
@@ -187,13 +187,9 @@ module ActiveMerchant
       def add_invoice(post, options)
         add_order_id(post, options)
 
-        if options[:billing_address]
-          post[:invoice_address]  = map_address(options[:billing_address])
-        end
+        post[:invoice_address]  = map_address(options[:billing_address]) if options[:billing_address]
 
-        if options[:shipping_address]
-          post[:shipping_address] = map_address(options[:shipping_address])
-        end
+        post[:shipping_address] = map_address(options[:shipping_address]) if options[:shipping_address]
 
         [:metadata, :branding_id, :variables].each do |field|
           post[field] = options[field] if options[field]
@@ -208,7 +204,7 @@ module ActiveMerchant
       end
 
       def add_credit_card_or_reference(post, credit_card_or_reference, options = {})
-        post[:card]             ||= {}
+        post[:card] ||= {}
         if credit_card_or_reference.is_a?(String)
           post[:card][:token] = credit_card_or_reference
         else
@@ -219,7 +215,7 @@ module ActiveMerchant
         end
 
         if options[:three_d_secure]
-          post[:card][:cavv]= options.dig(:three_d_secure, :cavv)
+          post[:card][:cavv] = options.dig(:three_d_secure, :cavv)
           post[:card][:eci] = options.dig(:three_d_secure, :eci)
           post[:card][:xav] = options.dig(:three_d_secure, :xid)
         end
@@ -253,15 +249,16 @@ module ActiveMerchant
 
       def map_address(address)
         return {} if address.nil?
+
         requires!(address, :name, :address1, :city, :zip, :country)
         country = Country.find(address[:country])
         mapped = {
-          :name         => address[:name],
-          :street       => address[:address1],
-          :city         => address[:city],
-          :region       => address[:address2],
-          :zip_code     => address[:zip],
-          :country_code => country.code(:alpha3).value
+          name: address[:name],
+          street: address[:address1],
+          city: address[:city],
+          region: address[:address2],
+          zip_code: address[:zip],
+          country_code: country.code(:alpha3).value
         }
         mapped
       end
