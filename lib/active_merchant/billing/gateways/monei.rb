@@ -169,7 +169,7 @@ module ActiveMerchant #:nodoc:
 
       # Private: Add payment part to request
       def add_transaction(request, action, money, options)
-        request[:transaction_type] = tanslate_payment_code(action)
+        request[:transaction_type] = translate_payment_code(action)
         request[:description] = options[:description] || options[:order_id]
         unless money.nil?
           request[:amount] = amount(money)
@@ -267,7 +267,7 @@ module ActiveMerchant #:nodoc:
       # Private: Send transaction to Monei servers and create AM response
       def commit(request, action)
         url = (test? ? test_url : live_url)
-        endpoint = tanslate_action_endpoint(action) + '/active_merchant'
+        endpoint = translate_action_endpoint(action) + '/active_merchant'
 
         response = api_request(url + endpoint, params(request, action), 'Content-Type' => 'application/json;charset=UTF-8')
         success = success_from(response)
@@ -322,7 +322,7 @@ module ActiveMerchant #:nodoc:
       end
 
       # Private: Translate AM operations to Monei operations codes
-      def tanslate_payment_code(action)
+      def translate_payment_code(action)
         {
           purchase: 'sale',
           authorize: 'auth',
@@ -333,7 +333,7 @@ module ActiveMerchant #:nodoc:
       end
 
       # Private: Translate AM operations to Monei endpoints
-      def tanslate_action_endpoint(action)
+      def translate_action_endpoint(action)
         {
           purchase: 'charge',
           authorize: 'charge',
