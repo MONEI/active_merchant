@@ -11,7 +11,7 @@ module ActiveMerchant #:nodoc:
     # In order to set-up the gateway you need two paramaters: account_id and password.
     # Request that data to Monei.
     class MoneiGateway < Gateway
-      self.live_url = self.test_url = 'https://pay.monei.net/ws/v1/'
+      self.live_url = self.test_url = 'https://active-merchant.monei.net/v1/'
 
       self.supported_countries = ['AD', 'AT', 'BE', 'BG', 'CA', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FO', 'FR', 'GB', 'GI', 'GR', 'HU', 'IE', 'IL', 'IS', 'IT', 'LI', 'LT', 'LU', 'LV', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'TR', 'US', 'VA']
       self.default_currency = 'EUR'
@@ -267,7 +267,7 @@ module ActiveMerchant #:nodoc:
       # Private: Send transaction to Monei servers and create AM response
       def commit(request, action)
         url = (test? ? test_url : live_url)
-        endpoint = translate_action_endpoint(action) + '/active_merchant'
+        endpoint = translate_action_endpoint(action)
 
         response = api_request(url + endpoint, params(request, action), 'Content-Type' => 'application/json;charset=UTF-8')
         success = success_from(response)
