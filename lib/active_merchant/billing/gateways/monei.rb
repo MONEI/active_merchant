@@ -285,7 +285,7 @@ module ActiveMerchant #:nodoc:
 
       # Private: Decide success from servers response
       def success_from(response)
-        response['result'] === 'completed'
+        response['result'] == 'completed'
       end
 
       # Private: Get message from servers response
@@ -310,7 +310,7 @@ module ActiveMerchant #:nodoc:
 
       # Private: generate request params depending on action
       def params(request, action)
-        if action == :purchase || action == :authorize
+        if [:purchase, :authorize].include?(action)
           request = {
             'charge': request,
             'context': {
