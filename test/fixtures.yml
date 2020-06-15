@@ -550,8 +550,7 @@ modern_payments:
 
 # Working credentials, no need to replace
 monei:
-  account_id: 00000000-aaaa-bbbb-cccc-dddd123456789
-  password: password
+  api_key: pk_test_3cb2d54b7ee145fa92d683c01816ad15
 
 # Working credentials, no need to replace
 moneris:

@@ -159,13 +159,10 @@ class MoneiTest < Test::Unit::TestCase
       "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
       "amount": "1.00",
       "currency": "EUR",
-      "monei_order_id": "067574158f1f42499c31404752d52d06",
+      "checkout_id": "067574158f1f42499c31404752d52d06",
       "order_id": "1",
       "result": "completed",
-      "test": "true",
-      "timestamp": "2020-04-30T23:23:05.230Z",
       "message": "Transaction Approved",
-      "transaction_type": "sale",
       "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
     }
     RESPONSE
@@ -186,13 +183,10 @@ class MoneiTest < Test::Unit::TestCase
       "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
       "amount": "1.00",
       "currency": "EUR",
-      "monei_order_id": "067574158f1f42499c31404752d52d06",
+      "checkout_id": "067574158f1f42499c31404752d52d06",
       "order_id": "1",
       "result": "completed",
-      "test": "true",
-      "timestamp": "2020-04-30T23:23:05.230Z",
       "message": "Transaction Approved",
-      "transaction_type": "authorization",
       "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
     }
     RESPONSE
@@ -213,13 +207,10 @@ class MoneiTest < Test::Unit::TestCase
       "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
       "amount": "1.00",
       "currency": "EUR",
-      "monei_order_id": "067574158f1f42499c31404752d52d06",
+      "checkout_id": "067574158f1f42499c31404752d52d06",
       "order_id": "1",
       "result": "completed",
-      "test": "true",
-      "timestamp": "2020-04-30T23:23:05.230Z",
       "message": "Transaction Approved",
-      "transaction_type": "capture",
       "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
     }
     RESPONSE
@@ -240,13 +231,10 @@ class MoneiTest < Test::Unit::TestCase
       "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
       "amount": "1.00",
       "currency": "EUR",
-      "monei_order_id": "067574158f1f42499c31404752d52d06",
+      "checkout_id": "067574158f1f42499c31404752d52d06",
       "order_id": "1",
       "result": "completed",
-      "test": "true",
-      "timestamp": "2020-04-30T23:23:05.230Z",
       "message": "Transaction Approved",
-      "transaction_type": "refund",
       "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
     }
     RESPONSE
@@ -267,13 +255,10 @@ class MoneiTest < Test::Unit::TestCase
       "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
       "amount": "1.00",
       "currency": "EUR",
-      "monei_order_id": "067574158f1f42499c31404752d52d06",
+      "checkout_id": "067574158f1f42499c31404752d52d06",
       "order_id": "1",
       "result": "completed",
-      "test": "true",
-      "timestamp": "2020-04-30T23:23:05.230Z",
       "message": "Transaction Approved",
-      "transaction_type": "void",
       "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
     }
     RESPONSE

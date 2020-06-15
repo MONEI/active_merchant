@@ -8,7 +8,7 @@ module ActiveMerchant #:nodoc:
     # gateway please go to http://www.monei.net
     #
     # === Setup
-    # In order to set-up the gateway you need two paramaters: account_id and password.
+    # In order to set-up the gateway you need only one paramater: the api_key
     # Request that data to Monei.
     class MoneiGateway < Gateway
       self.live_url = self.test_url = 'https://active-merchant.monei.net/v1/'
@@ -23,11 +23,10 @@ module ActiveMerchant #:nodoc:
       # Constructor
       #
       # options - Hash containing the gateway credentials, ALL MANDATORY
-      #           :account_id      Account ID
-      #           :password        Account password
+      #           :api_key      Account's API KEY
       #
       def initialize(options={})
-        requires!(options, :account_id, :password)
+        requires!(options, :api_key)
         super
       end
 
@@ -149,8 +148,6 @@ module ActiveMerchant #:nodoc:
       # Private: Build request object
       def build_request
         request = {}
-        request[:account_id] = options[:account_id]
-        request[:signature] = Base64.strict_encode64(@options[:password]).chomp
         request[:test] = test? ? 'true' : 'false'
         request
       end
@@ -163,7 +160,7 @@ module ActiveMerchant #:nodoc:
 
       # Private: Add identification part to request for orders that depend on authorization from previous operation
       def add_identification_authorization(request, authorization, options)
-        request[:monei_order_id] = authorization
+        request[:checkout_id] = authorization
         request[:order_id] = options[:order_id]
       end
 
@@ -268,8 +265,12 @@ module ActiveMerchant #:nodoc:
       def commit(request, action)
         url = (test? ? test_url : live_url)
         endpoint = translate_action_endpoint(action)
+        headers = {
+          'Content-Type': 'application/json;charset=UTF-8',
+          'Authorization': "Bearer #{@options[:api_key]}"
+        }
 
-        response = api_request(url + endpoint, params(request, action), 'Content-Type' => 'application/json;charset=UTF-8')
+        response = api_request(url + endpoint, params(request, action), headers)
         success = success_from(response)
 
         Response.new(
@@ -299,7 +300,7 @@ module ActiveMerchant #:nodoc:
 
       # Private: Get authorization code from servers response
       def authorization_from(response)
-        response['monei_order_id']
+        response['checkout_id']
       end
 
       # Private: Encode POST parameters
