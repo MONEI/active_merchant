@@ -44,7 +44,7 @@ module ActiveMerchant #:nodoc:
       self.money_format        = :cents
 
       # Not all card types may be activated by the bank!
-      self.supported_cardtypes = [:visa, :master, :american_express, :jcb, :diners_club, :unionpay]
+      self.supported_cardtypes = %i[visa master american_express jcb diners_club unionpay]
       self.homepage_url        = 'http://www.redsys.es/'
       self.display_name        = 'Redsys'
 
@@ -197,6 +197,7 @@ module ActiveMerchant #:nodoc:
         add_amount(data, money, options)
         add_order(data, options[:order_id])
         add_payment(data, payment)
+        add_external_mpi_fields(data, options)
         add_threeds(data, options) if options[:execute_threed]
         data[:description] = options[:description]
         data[:store_in_vault] = options[:store]
@@ -213,6 +214,7 @@ module ActiveMerchant #:nodoc:
         add_amount(data, money, options)
         add_order(data, options[:order_id])
         add_payment(data, payment)
+        add_external_mpi_fields(data, options)
         add_threeds(data, options) if options[:execute_threed]
         data[:description] = options[:description]
         data[:store_in_vault] = options[:store]
@@ -225,7 +227,7 @@ module ActiveMerchant #:nodoc:
         data = {}
         add_action(data, :capture)
         add_amount(data, money, options)
-        order_id, _, _ = split_authorization(authorization)
+        order_id, = split_authorization(authorization)
         add_order(data, order_id)
         data[:description] = options[:description]
 
@@ -247,7 +249,7 @@ module ActiveMerchant #:nodoc:
         data = {}
         add_action(data, :refund)
         add_amount(data, money, options)
-        order_id, _, _ = split_authorization(authorization)
+        order_id, = split_authorization(authorization)
         add_order(data, order_id)
         data[:description] = options[:description]
 
@@ -321,8 +323,27 @@ module ActiveMerchant #:nodoc:
         end
       end
 
+      def add_external_mpi_fields(data, options)
+        return unless options[:three_d_secure]
+
+        if options[:three_d_secure][:version]
+          data[:threeDSServerTransID] = options[:three_d_secure][:xid] if options[:three_d_secure][:xid]
+          data[:dsTransID] = options[:three_d_secure][:ds_transaction_id] if options[:three_d_secure][:ds_transaction_id]
+          data[:authenticacionValue] = options[:three_d_secure][:cavv] if options[:three_d_secure][:cavv]
+          data[:protocolVersion] = options[:three_d_secure][:version] if options[:three_d_secure][:version]
+
+          data[:authenticacionMethod] = options[:authentication_method] if options[:authentication_method]
+          data[:authenticacionType] = options[:authentication_type] if options[:authentication_type]
+          data[:authenticationFlow] = options[:authentication_flow] if options[:authentication_flow]
+        elsif options[:three_d_secure][:version]
+          data[:txid] = options[:three_d_secure][:xid] if options[:three_d_secure][:xid]
+          data[:cavv] = options[:three_d_secure][:cavv] if options[:three_d_secure][:cavv]
+          data[:eci] = options[:three_d_secure][:eci] if options[:three_d_secure][:eci]
+        end
+      end
+
       def add_threeds(data, options)
-        data[:threeds] = {threeDSInfo: 'CardData'} if options[:execute_threed] == true
+        data[:threeds] = { threeDSInfo: 'CardData' } if options[:execute_threed] == true
       end
 
       def determine_3ds_action(threeds_hash)
@@ -334,7 +355,7 @@ module ActiveMerchant #:nodoc:
       def commit(data, options = {})
         if data[:threeds]
           action = determine_3ds_action(data[:threeds])
-          request = <<-EOS
+          request = <<-REQUEST
             <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:apachesoap="http://xml.apache.org/xml-soap" xmlns:impl="http://webservice.sis.sermepa.es" xmlns:intf="http://webservice.sis.sermepa.es" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" >
             <soapenv:Header/>
             <soapenv:Body>
@@ -345,14 +366,14 @@ module ActiveMerchant #:nodoc:
               </intf:#{action}>
             </soapenv:Body>
           </soapenv:Envelope>
-          EOS
+          REQUEST
           parse(ssl_post(threeds_url, request, headers(action)), action)
         else
           parse(ssl_post(url, "entrada=#{CGI.escape(xml_request_from(data, options))}", headers), action)
         end
       end
 
-      def headers(action=nil)
+      def headers(action = nil)
         if action
           {
             'Content-Type' => 'text/xml',
@@ -419,6 +440,8 @@ module ActiveMerchant #:nodoc:
       end
 
       def build_merchant_data(xml, data, options = {})
+        # See https://sis-t.redsys.es:25443/sis/services/SerClsWSEntradaV2/wsdl/SerClsWSEntradaV2.wsdl
+        # (which results from calling #threeds_url + '?WSDL', https://sis-t.redsys.es:25443/sis/services/SerClsWSEntradaV2?WSDL)
         xml.DATOSENTRADA do
           # Basic elements
           xml.DS_Version 0.1
@@ -447,6 +470,9 @@ module ActiveMerchant #:nodoc:
             xml.DS_MERCHANT_EXPIRYDATE data[:card][:date]
             xml.DS_MERCHANT_CVV2       data[:card][:cvv]
             xml.DS_MERCHANT_IDENTIFIER 'REQUIRED' if data[:store_in_vault]
+
+            build_merchant_mpi_external(xml, data)
+
           elsif data[:credit_card_token]
             xml.DS_MERCHANT_IDENTIFIER data[:credit_card_token]
             xml.DS_MERCHANT_DIRECTPAYMENT 'true'
@@ -458,6 +484,27 @@ module ActiveMerchant #:nodoc:
 
           xml.DS_MERCHANT_EMV3DS data[:threeds].to_json if data[:threeds]
         end
+      end
+
+      def build_merchant_mpi_external(xml, data)
+        return unless data[:txid] || data[:threeDSServerTransID]
+
+        ds_merchant_mpi_external = {}
+        ds_merchant_mpi_external[:TXID] = data[:txid] if data[:txid]
+        ds_merchant_mpi_external[:CAVV] = data[:cavv] if data[:cavv]
+        ds_merchant_mpi_external[:ECI] = data[:eci] if data[:eci]
+
+        ds_merchant_mpi_external[:threeDSServerTransID] = data[:threeDSServerTransID] if data[:threeDSServerTransID]
+        ds_merchant_mpi_external[:dsTransID] = data[:dsTransID] if data[:dsTransID]
+        ds_merchant_mpi_external[:authenticacionValue] = data[:authenticacionValue] if data[:authenticacionValue]
+        ds_merchant_mpi_external[:protocolVersion] = data[:protocolVersion] if data[:protocolVersion]
+
+        ds_merchant_mpi_external[:authenticacionMethod] = data[:authenticacionMethod] if data[:authenticacionMethod]
+        ds_merchant_mpi_external[:authenticacionType] = data[:authenticacionType] if data[:authenticacionType]
+        ds_merchant_mpi_external[:authenticacionFlow] = data[:authenticacionFlow] if data[:authenticacionFlow]
+
+        xml.DS_MERCHANT_MPIEXTERNAL ds_merchant_mpi_external.to_json unless ds_merchant_mpi_external.empty?
+        xml.target!
       end
 
       def parse(data, action)
@@ -476,11 +523,11 @@ module ActiveMerchant #:nodoc:
           if validate_signature(params)
             message = response_text(params[:ds_response])
             options[:authorization] = build_authorization(params)
-            success = is_success_response?(params[:ds_response])
+            success = success_response?(params[:ds_response])
           else
             message = 'Response failed validation check'
           end
-        elsif ['iniciaPeticion', 'trataPeticion'].include?(action)
+        elsif %w[iniciaPeticion trataPeticion].include?(action)
           vxml = Nokogiri::XML(data).remove_namespaces!.xpath("//Envelope/Body/#{action}Response/#{action}Return").inner_text
           xml = Nokogiri::XML(vxml)
           node = (action == 'iniciaPeticion' ? 'INFOTARJETA' : 'OPERACION')
@@ -490,7 +537,7 @@ module ActiveMerchant #:nodoc:
           end
           message = response_text_3ds(xml, params)
           options[:authorization] = build_authorization(params)
-          success = params.size > 0 && is_success_response?(params[:ds_response])
+          success = params.size > 0 && success_response?(params[:ds_response])
         else
           # Some kind of programmer error with the request!
           message = "#{code} ERROR"
@@ -559,13 +606,13 @@ module ActiveMerchant #:nodoc:
         message
       end
 
-      def is_success_response?(code)
+      def success_response?(code)
         (code.to_i < 100) || [400, 481, 500, 900].include?(code.to_i)
       end
 
       def clean_order_id(order_id)
         cleansed = order_id.gsub(/[^\da-zA-Z]/, '')
-        if cleansed =~ /^\d{4}/
+        if /^\d{4}/.match?(cleansed)
           cleansed[0..11]
         else
           '%04d%s' % [rand(0..9999), cleansed[0...8]]

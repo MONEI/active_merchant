@@ -8,12 +8,36 @@ class RemoteRedsysSHA256Test < Test::Unit::TestCase
     @declined_card = credit_card
     @threeds2_credit_card = credit_card('4918019199883839')
     @options = {
-      order_id: generate_order_id,
+      order_id: generate_order_id
     }
   end
 
   def test_successful_purchase
     response = @gateway.purchase(@amount, @credit_card, @options)
+    assert_success response
+    assert_equal 'Transaction Approved', response.message
+  end
+
+  def test_successful_purchase_threeds2
+    xid = '97267598-FAE6-48F2-8083-C23433990FBC'
+    ds_transaction_id = '97267598-FAE6-48F2-8083-C23433990FBC'
+    version = '2.1.0'
+
+    response = @gateway.purchase(
+      @amount,
+      @credit_card,
+      @options.merge(
+        three_d_secure: {
+          version: version,
+          ds_transaction_id: ds_transaction_id,
+          xid: xid
+        },
+        description: 'description',
+        store: 'store',
+        sca_exemption: 'MOTO'
+      )
+    )
+
     assert_success response
     assert_equal 'Transaction Approved', response.message
   end
