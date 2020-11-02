@@ -144,10 +144,10 @@ class MoneiTest < Test::Unit::TestCase
     stub_comms do
       @gateway.purchase(@amount, @credit_card, options)
     end.check_request do |endpoint, data, headers|
-      assert_match(/\"authentication_type\":\"#{authentication_type}\"/, data)
-      assert_match(/\"authentication_eci\":\"#{authentication_eci}\"/, data)
-      assert_match(/\"authentication_cavv\":\"#{authentication_cavv}\"/, data)
-      assert_match(/\"authentication_xid\":\"#{authentication_xid}\"/, data)
+      assert_match(/\"type\":\"#{authentication_type}\"/, data)
+      assert_match(/\"eci\":\"#{authentication_eci}\"/, data)
+      assert_match(/\"cavv\":\"#{authentication_cavv}\"/, data)
+      assert_match(/\"xid\":\"#{authentication_xid}\"/, data)
     end.respond_with(successful_purchase_response)
   end
 
@@ -156,13 +156,13 @@ class MoneiTest < Test::Unit::TestCase
   def successful_purchase_response
     <<-RESPONSE
     {
-      "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
-      "amount": "1.00",
+      "id": "067574158f1f42499c31404752d52d06",
+      "amount": 110,
       "currency": "EUR",
-      "checkout_id": "067574158f1f42499c31404752d52d06",
-      "order_id": "1",
-      "result": "completed",
-      "message": "Transaction Approved",
+      "orderId": "1",
+      "accountId": "00000000-aaaa-bbbb-cccc-dddd123456789",
+      "status": "SUCCEEDED",
+      "statusMessage": "Transaction Approved",
       "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
     }
     RESPONSE
@@ -180,13 +180,13 @@ class MoneiTest < Test::Unit::TestCase
   def successful_authorize_response
     <<-RESPONSE
     {
-      "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
-      "amount": "1.00",
+      "id": "067574158f1f42499c31404752d52d06",
+      "amount": 110,
       "currency": "EUR",
-      "checkout_id": "067574158f1f42499c31404752d52d06",
-      "order_id": "1",
-      "result": "completed",
-      "message": "Transaction Approved",
+      "orderId": "1",
+      "accountId": "00000000-aaaa-bbbb-cccc-dddd123456789",
+      "status": "AUTHORIZED",
+      "statusMessage": "Transaction Approved",
       "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
     }
     RESPONSE
@@ -204,13 +204,13 @@ class MoneiTest < Test::Unit::TestCase
   def successful_capture_response
     <<-RESPONSE
     {
-      "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
-      "amount": "1.00",
+      "id": "067574158f1f42499c31404752d52d06",
+      "amount": 110,
       "currency": "EUR",
-      "checkout_id": "067574158f1f42499c31404752d52d06",
-      "order_id": "1",
-      "result": "completed",
-      "message": "Transaction Approved",
+      "orderId": "1",
+      "accountId": "00000000-aaaa-bbbb-cccc-dddd123456789",
+      "status": "SUCCEEDED",
+      "statusMessage": "Transaction Approved",
       "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
     }
     RESPONSE
@@ -228,13 +228,13 @@ class MoneiTest < Test::Unit::TestCase
   def successful_refund_response
     <<-RESPONSE
     {
-      "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
-      "amount": "1.00",
+      "id": "067574158f1f42499c31404752d52d06",
+      "amount": 110,
       "currency": "EUR",
-      "checkout_id": "067574158f1f42499c31404752d52d06",
-      "order_id": "1",
-      "result": "completed",
-      "message": "Transaction Approved",
+      "orderId": "1",
+      "accountId": "00000000-aaaa-bbbb-cccc-dddd123456789",
+      "status": "REFUNDED",
+      "statusMessage": "Transaction Approved",
       "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
     }
     RESPONSE
@@ -252,13 +252,13 @@ class MoneiTest < Test::Unit::TestCase
   def successful_void_response
     <<-RESPONSE
     {
-      "account_id": "00000000-aaaa-bbbb-cccc-dddd123456789",
-      "amount": "1.00",
+      "id": "067574158f1f42499c31404752d52d06",
+      "amount": 110,
       "currency": "EUR",
-      "checkout_id": "067574158f1f42499c31404752d52d06",
-      "order_id": "1",
-      "result": "completed",
-      "message": "Transaction Approved",
+      "orderId": "1",
+      "accountId": "00000000-aaaa-bbbb-cccc-dddd123456789",
+      "status": "CANCELED",
+      "statusMessage": "Transaction Approved",
       "signature": "3dc52e4dbcc15cee5bb03cb7e3ab90708bf8b8a21818c0262ac05ec0c01780d0"
     }
     RESPONSE
