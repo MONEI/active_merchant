@@ -28,6 +28,14 @@ class IatsPaymentsTest < Test::Unit::TestCase
     assert response.authorization
   end
 
+  def test_successful_purchase_with_customer_details
+    assert response = @gateway.purchase(@amount, @credit_card, @options.merge(@customer_details))
+    assert_success response
+    assert response.test?
+    assert_equal 'Success', response.message
+    assert response.authorization
+  end
+
   def test_failed_purchase
     credit_card = credit_card('4111111111111111')
     assert response = @gateway.purchase(200, credit_card, @options)
@@ -66,7 +74,7 @@ class IatsPaymentsTest < Test::Unit::TestCase
     purchase = @gateway.purchase(@amount, credit_card, @options)
     assert_success purchase
 
-    assert refund = @gateway.refund(@amount, purchase.authorization)
+    assert refund = @gateway.refund(@amount + 50, purchase.authorization)
     assert_failure refund
   end
 
@@ -95,6 +103,21 @@ class IatsPaymentsTest < Test::Unit::TestCase
     assert unstore = @gateway.unstore(store.authorization, @options)
     assert_success unstore
     assert_equal 'Success', unstore.message
+  end
+
+  def test_successful_store_and_purchase_and_refund
+    assert store = @gateway.store(@credit_card, @options)
+    assert_success store
+    assert store.authorization
+    assert_equal 'Success', store.message
+
+    assert purchase = @gateway.purchase(@amount, store.authorization, @options)
+    assert_success purchase
+    assert purchase.authorization
+    assert_equal 'Success', purchase.message
+
+    assert refund = @gateway.refund(@amount, purchase.authorization)
+    assert_success refund
   end
 
   def test_failed_store

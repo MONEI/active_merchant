@@ -13,9 +13,9 @@ module ActiveMerchant #:nodoc:
     class MoneiGateway < Gateway
       self.live_url = self.test_url = 'https://active-merchant.monei.net/v1/'
 
-      self.supported_countries = ['AD', 'AT', 'BE', 'BG', 'CA', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FO', 'FR', 'GB', 'GI', 'GR', 'HU', 'IE', 'IL', 'IS', 'IT', 'LI', 'LT', 'LU', 'LV', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'TR', 'US', 'VA']
+      self.supported_countries = %w[AD AT BE BG CA CH CY CZ DE DK EE ES FI FO FR GB GI GR HU IE IL IS IT LI LT LU LV MT NL NO PL PT RO SE SI SK TR US VA]
       self.default_currency = 'EUR'
-      self.supported_cardtypes = [:visa, :master, :maestro, :jcb, :american_express]
+      self.supported_cardtypes = %i[visa master maestro jcb american_express]
 
       self.homepage_url = 'http://www.monei.net/'
       self.display_name = 'Monei'
@@ -41,7 +41,7 @@ module ActiveMerchant #:nodoc:
       #               :currency         Sale currency to override money object or default (optional)
       #
       # Returns Active Merchant response object
-      def purchase(money, credit_card, options={})
+      def purchase(money, credit_card, options = {})
         execute_new_order(:purchase, money, credit_card, options)
       end
 
@@ -56,7 +56,7 @@ module ActiveMerchant #:nodoc:
       #               :currency         Sale currency to override money object or default (optional)
       #
       # Returns Active Merchant response object
-      def authorize(money, credit_card, options={})
+      def authorize(money, credit_card, options = {})
         execute_new_order(:authorize, money, credit_card, options)
       end
 
@@ -72,7 +72,7 @@ module ActiveMerchant #:nodoc:
       # Note: you should pass either order_id or description
       #
       # Returns Active Merchant response object
-      def capture(money, authorization, options={})
+      def capture(money, authorization, options = {})
         execute_dependant(:capture, money, authorization, options)
       end
 
@@ -88,7 +88,7 @@ module ActiveMerchant #:nodoc:
       # Note: you should pass either order_id or description
       #
       # Returns Active Merchant response object
-      def refund(money, authorization, options={})
+      def refund(money, authorization, options = {})
         execute_dependant(:refund, money, authorization, options)
       end
 
@@ -99,7 +99,7 @@ module ActiveMerchant #:nodoc:
       #                 :order_id         Merchant created id for the authorization (optional)
       #
       # Returns Active Merchant response object
-      def void(authorization, options={})
+      def void(authorization, options = {})
         execute_dependant(:void, nil, authorization, options)
       end
 
@@ -113,7 +113,7 @@ module ActiveMerchant #:nodoc:
       #               :currency         Sale currency to override money object or default (optional)
       #
       # Returns Active Merchant response object of Authorization operation
-      def verify(credit_card, options={})
+      def verify(credit_card, options = {})
         MultiResponse.run(:use_first_response) do |r|
           r.process { authorize(100, credit_card, options) }
           r.process(:ignore_result) { void(r.authorization, options) }
