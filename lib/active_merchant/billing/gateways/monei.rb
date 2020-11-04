@@ -132,8 +132,8 @@ module ActiveMerchant #:nodoc:
         add_transaction(request, action, money, options)
         add_payment(request, credit_card)
         add_customer(request, credit_card, options)
-        add_3ds(request, options)
         add_3ds_authenticated_data(request, options)
+        add_3ds(request, options)
 
         commit(request, action, options)
       end
@@ -229,29 +229,6 @@ module ActiveMerchant #:nodoc:
         end
       end
 
-      # Private: add the 3DSecure info to request
-      def add_3ds(request, options)
-        if three_ds_2_options = options[:three_ds_2]
-          device_channel = three_ds_2_options[:channel]
-          if device_channel != 'app'
-            add_browser_info(request, three_ds_2_options[:browser_info])
-            request[:paymentMethod][:card][:auth][:notificationUrl] = three_ds_2_options[:notification_url]
-          # else
-          #   request[:threeDS2RequestData] = { deviceChannel: device_channel }
-          end
-
-          if options.has_key?(:sca_exemption)
-            request[:paymentMethod][:card][:auth][:scaExemption] = options[:sca_exemption]
-          end
-        else
-          return unless !options[:execute_threed].nil? || !options[:threed_dynamic].nil?
-
-          request[:sessionDetails][:ip] = options[:ip] if options[:ip]
-          request[:sessionDetails][:userAgent] = options[:user_agent] if options[:user_agent]
-          request[:sessionDetails][:browserAccept] = options[:accept_header] if options[:accept_header]
-        end
-      end
-
       # Private: add the already validated 3DSecure info to request
       def add_3ds_authenticated_data(request, options)
         if options[:three_d_secure] && options[:three_d_secure][:eci] && options[:three_d_secure][:xid]
@@ -289,6 +266,29 @@ module ActiveMerchant #:nodoc:
           directoryResponse: three_d_secure_options[:directory_response_status],
           authenticationResponse: authentication_response
         }
+      end
+
+      # Private: add to the request the info to validate 3DSecure
+      def add_3ds(request, options)
+        if three_ds_2_options = options[:three_ds_2]
+          device_channel = three_ds_2_options[:channel]
+          if device_channel != 'app'
+            add_browser_info(request, three_ds_2_options[:browser_info])
+            request[:paymentMethod][:card][:auth][:notificationUrl] = three_ds_2_options[:notification_url]
+          # else
+          #   request[:threeDS2RequestData] = { deviceChannel: device_channel }
+          end
+
+          if options.has_key?(:sca_exemption)
+            request[:paymentMethod][:card][:auth][:scaExemption] = options[:sca_exemption]
+          end
+        else
+          return unless !options[:execute_threed].nil? || !options[:threed_dynamic].nil?
+
+          request[:sessionDetails][:ip] = options[:ip] if options[:ip]
+          request[:sessionDetails][:userAgent] = options[:user_agent] if options[:user_agent]
+          request[:sessionDetails][:browserAccept] = options[:accept_header] if options[:accept_header]
+        end
       end
 
       def add_browser_info(request, browser_info)
@@ -374,7 +374,7 @@ module ActiveMerchant #:nodoc:
 
       # Private: Get message from servers response
       def message_from(response, success)
-        success ? 'Transaction approved' : response.fetch('statusMessage', 'No error details')
+        success ? 'Transaction approved' : response.fetch('statusMessage', response.fetch('message', 'No error details'))
       end
 
       # Private: Get error code from servers response
