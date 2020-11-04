@@ -128,7 +128,6 @@ class MoneiTest < Test::Unit::TestCase
   end
 
   def test_3ds_request
-    authentication_type = '3DSecure'
     authentication_eci = '05'
     authentication_cavv = 'AAACAgSRBklmQCFgMpEGAAAAAAA='
     authentication_xid = 'CAACCVVUlwCXUyhQNlSXAAAAAAA='
@@ -144,7 +143,6 @@ class MoneiTest < Test::Unit::TestCase
     stub_comms do
       @gateway.purchase(@amount, @credit_card, options)
     end.check_request do |endpoint, data, headers|
-      assert_match(/\"type\":\"#{authentication_type}\"/, data)
       assert_match(/\"eci\":\"#{authentication_eci}\"/, data)
       assert_match(/\"cavv\":\"#{authentication_cavv}\"/, data)
       assert_match(/\"xid\":\"#{authentication_xid}\"/, data)

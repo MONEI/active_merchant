@@ -191,11 +191,11 @@ module ActiveMerchant #:nodoc:
       # Private: Add customer part to request
       def add_customer(request, credit_card, options)
         requires!(options, :billing_address)
-        address = options[:billing_address]
+        address = options[:billing_address] || options[:address]
 
         request[:customer] = {}
         request[:customer][:email] = options[:email] || 'support@monei.net'
-        request[:customer][:name] = "#{credit_card.first_name} #{credit_card.last_name}"
+        request[:customer][:name] = address[:name].to_s
 
         request[:billingDetails] = {}
         request[:billingDetails][:address] = {}
