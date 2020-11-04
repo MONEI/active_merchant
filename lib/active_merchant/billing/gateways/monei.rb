@@ -11,7 +11,8 @@ module ActiveMerchant #:nodoc:
     # In order to set-up the gateway you need only one paramater: the api_key
     # Request that data to Monei.
     class MoneiGateway < Gateway
-      self.live_url = self.test_url = 'https://api.monei.net/v1/payments'
+      # self.live_url = self.test_url = 'https://api.monei.net/v1/payments'
+      self.live_url = self.test_url = 'https://api.microapps-staging.com/v1/payments'
 
       self.supported_countries = %w[AD AT BE BG CA CH CY CZ DE DK EE ES FI FO FR GB GI GR HU IE IL IS IT LI LT LU LV MT NL NO PL PT RO SE SI SK TR US VA]
       self.default_currency = 'EUR'
@@ -163,7 +164,9 @@ module ActiveMerchant #:nodoc:
       # Private: Add identification part to request for orders that depend on authorization from previous operation
       def add_identification_authorization(request, authorization, options)
         options[:paymentId] = authorization
-        request[:orderId] = options[:order_id]
+        if options[:order_id]
+          request[:orderId] = options[:order_id]
+        end
       end
 
       # Private: Add payment part to request
@@ -410,9 +413,9 @@ module ActiveMerchant #:nodoc:
         {
           purchase: '',
           authorize: '',
-          capture: "#{options[:paymentId]}/capture",
-          refund: "#{options[:paymentId]}/refund",
-          void: "#{options[:paymentId]}/cancel",
+          capture: "/#{options[:paymentId]}/capture",
+          refund: "/#{options[:paymentId]}/refund",
+          void: "/#{options[:paymentId]}/cancel",
         }[action]
       end
     end
