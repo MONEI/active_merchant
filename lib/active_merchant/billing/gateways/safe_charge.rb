@@ -22,8 +22,19 @@ module ActiveMerchant #:nodoc:
 
       def purchase(money, payment, options = {})
         post = {}
-        post[:sg_APIType] = 1 if options[:three_d_secure]
-        trans_type = options[:three_d_secure] ? 'Sale3D' : 'Sale'
+
+        # Determine if 3DS is requested, or there is standard external MPI data
+        if options[:three_d_secure]
+          if options[:three_d_secure].is_a?(Hash)
+            add_external_mpi_data(post, options)
+          else
+            post[:sg_APIType] = 1
+            trans_type = 'Sale3D'
+          end
+        end
+
+        trans_type ||= 'Sale'
+
         add_transaction_data(trans_type, post, money, options)
         add_payment(post, payment, options)
         add_customer_details(post, payment, options)
@@ -33,6 +44,8 @@ module ActiveMerchant #:nodoc:
 
       def authorize(money, payment, options = {})
         post = {}
+
+        add_external_mpi_data(post, options) if options[:three_d_secure]&.is_a?(Hash)
         add_transaction_data('Auth', post, money, options)
         add_payment(post, payment, options)
         add_customer_details(post, payment, options)
@@ -69,8 +82,10 @@ module ActiveMerchant #:nodoc:
 
       def credit(money, payment, options = {})
         post = {}
+
         add_payment(post, payment, options)
         add_transaction_data('Credit', post, money, options)
+
         post[:sg_CreditType] = 1
 
         commit(post)
@@ -152,6 +167,15 @@ module ActiveMerchant #:nodoc:
         end
 
         post[:sg_Email] = options[:email]
+      end
+
+      def add_external_mpi_data(post, options)
+        post[:sg_eci] = options[:three_d_secure][:eci] if options[:three_d_secure][:eci]
+        post[:sg_cavv] = options[:three_d_secure][:cavv] if options[:three_d_secure][:cavv]
+        post[:sg_dsTransID] = options[:three_d_secure][:ds_transaction_id] if options[:three_d_secure][:ds_transaction_id]
+        post[:sg_threeDSProtocolVersion] = options[:three_d_secure][:version] || (options[:three_d_secure][:ds_transaction_id] ? '2' : '1')
+        post[:sg_xid] = options[:three_d_secure][:xid]
+        post[:sg_IsExternalMPI] = 1
       end
 
       def parse(xml)

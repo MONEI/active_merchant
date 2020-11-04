@@ -117,7 +117,8 @@ module ActiveMerchant #:nodoc:
         '96' => 'System malfunction',
         'R0' => 'Stop Payment Order',
         'R1' => 'Revocation of Authorisation Order',
-        'R3' => 'Revocation of all Authorisations Order'
+        'R3' => 'Revocation of all Authorisations Order',
+        '1A' => 'Strong Customer Authentication required'
       }
 
       def initialize(options = {})
