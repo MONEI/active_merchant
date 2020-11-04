@@ -26,7 +26,7 @@ module ActiveMerchant #:nodoc:
       # options - Hash containing the gateway credentials, ALL MANDATORY
       #           :api_key      Account's API KEY
       #
-      def initialize(options={})
+      def initialize(options = {})
         requires!(options, :api_key)
         super
       end
@@ -163,9 +163,7 @@ module ActiveMerchant #:nodoc:
       # Private: Add identification part to request for orders that depend on authorization from previous operation
       def add_identification_authorization(request, authorization, options)
         options[:paymentId] = authorization
-        if options[:order_id]
-          request[:orderId] = options[:order_id]
-        end
+        request[:orderId] = options[:order_id] if options[:order_id]
       end
 
       # Private: Add payment part to request
@@ -274,13 +272,9 @@ module ActiveMerchant #:nodoc:
           if device_channel != 'app'
             add_browser_info(request, three_ds_2_options[:browser_info])
             request[:paymentMethod][:card][:auth][:notificationUrl] = three_ds_2_options[:notification_url]
-          # else
-          #   request[:threeDS2RequestData] = { deviceChannel: device_channel }
           end
 
-          if options.has_key?(:sca_exemption)
-            request[:paymentMethod][:card][:auth][:scaExemption] = options[:sca_exemption]
-          end
+          request[:paymentMethod][:card][:auth][:scaExemption] = options[:sca_exemption] if options.has_key?(:sca_exemption)
         else
           return unless !options[:execute_threed].nil? || !options[:threed_dynamic].nil?
 
@@ -362,12 +356,12 @@ module ActiveMerchant #:nodoc:
 
       # Private: Decide success from servers response
       def success_from(response)
-        [
-          'SUCCEEDED',
-          'AUTHORIZED',
-          'REFUNDED',
-          'PARTIALLY_REFUNDED',
-          'CANCELED'
+        %w[
+          SUCCEEDED
+          AUTHORIZED
+          REFUNDED
+          PARTIALLY_REFUNDED
+          CANCELED
         ].include? response['status']
       end
 
@@ -414,7 +408,7 @@ module ActiveMerchant #:nodoc:
           authorize: '',
           capture: "/#{options[:paymentId]}/capture",
           refund: "/#{options[:paymentId]}/refund",
-          void: "/#{options[:paymentId]}/cancel",
+          void: "/#{options[:paymentId]}/cancel"
         }[action]
       end
     end

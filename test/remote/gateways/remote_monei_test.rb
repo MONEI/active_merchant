@@ -24,7 +24,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
   end
 
   def test_successful_purchase
-    options = @options.merge({order_id: random_order_id()})
+    options = @options.merge({ order_id: random_order_id() })
     response = @gateway.purchase(@amount, @credit_card, options)
 
     assert_success response
@@ -82,7 +82,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
   end
 
   def test_failed_purchase
-    options = @options.merge({order_id: random_order_id()})
+    options = @options.merge({ order_id: random_order_id() })
     response = @gateway.purchase(@amount, @declined_card, options)
     assert_failure response
     assert_equal 'Card number declined by processor', response.message
@@ -98,7 +98,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
         xid: 'CAACCVVUlwCXUyhQNlSXAAAAAAA='
       },
       ip: '77.110.174.153',
-      user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36',
+      user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36'
     })
     response = @gateway.purchase(@amount, @three_ds_declined_card, options)
     assert_failure response
@@ -106,7 +106,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
   end
 
   def test_successful_authorize_and_capture
-    options = @options.merge({order_id: random_order_id()})
+    options = @options.merge({ order_id: random_order_id() })
     auth = @gateway.authorize(@amount, @credit_card, options)
     assert_success auth
 
@@ -115,13 +115,13 @@ class RemoteMoneiTest < Test::Unit::TestCase
   end
 
   def test_failed_authorize
-    options = @options.merge({order_id: random_order_id()})
+    options = @options.merge({ order_id: random_order_id() })
     response = @gateway.authorize(@amount, @declined_card, options)
     assert_failure response
   end
 
   def test_partial_capture
-    options = @options.merge({order_id: random_order_id()})
+    options = @options.merge({ order_id: random_order_id() })
     auth = @gateway.authorize(@amount, @credit_card, options)
     assert_success auth
 
@@ -130,7 +130,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
   end
 
   def test_multi_partial_capture
-    options = @options.merge({order_id: random_order_id()})
+    options = @options.merge({ order_id: random_order_id() })
     auth = @gateway.authorize(@amount, @credit_card, options)
     assert_success auth
 
@@ -147,7 +147,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
   end
 
   def test_successful_refund
-    options = @options.merge({order_id: random_order_id()})
+    options = @options.merge({ order_id: random_order_id() })
     purchase = @gateway.purchase(@amount, @credit_card, options)
     assert_success purchase
 
@@ -156,7 +156,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
   end
 
   def test_partial_refund
-    options = @options.merge({order_id: random_order_id()})
+    options = @options.merge({ order_id: random_order_id() })
     purchase = @gateway.purchase(@amount, @credit_card, options)
     assert_success purchase
 
@@ -165,7 +165,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
   end
 
   def test_multi_partial_refund
-    options = @options.merge({order_id: random_order_id()})
+    options = @options.merge({ order_id: random_order_id() })
     purchase = @gateway.purchase(@amount, @credit_card, options)
     assert_success purchase
 
@@ -182,7 +182,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
   end
 
   def test_successful_void
-    options = @options.merge({order_id: random_order_id()})
+    options = @options.merge({ order_id: random_order_id() })
     auth = @gateway.authorize(@amount, @credit_card, options)
     assert_success auth
 
@@ -196,14 +196,14 @@ class RemoteMoneiTest < Test::Unit::TestCase
   end
 
   def test_successful_verify
-    options = @options.merge({order_id: random_order_id()})
+    options = @options.merge({ order_id: random_order_id() })
     response = @gateway.verify(@credit_card, options)
     assert_success response
     assert_equal 'Transaction approved', response.message
   end
 
   def test_failed_verify
-    options = @options.merge({order_id: random_order_id()})
+    options = @options.merge({ order_id: random_order_id() })
     response = @gateway.verify(@declined_card, options)
     assert_failure response
 
@@ -214,7 +214,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
     gateway = MoneiGateway.new(
       api_key: 'invalid'
     )
-    options = @options.merge({order_id: random_order_id()})
+    options = @options.merge({ order_id: random_order_id() })
     response = gateway.purchase(@amount, @credit_card, options)
     assert_failure response
   end
