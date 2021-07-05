@@ -85,7 +85,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
     options = @options.merge({ order_id: random_order_id() })
     response = @gateway.purchase(@amount, @declined_card, options)
     assert_failure response
-    assert_equal 'Card number declined by processor', response.message
+    assert_equal 'Card rejected: invalid card number', response.message
   end
 
   def test_failed_purchase_with_3ds
@@ -207,7 +207,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
     response = @gateway.verify(@declined_card, options)
     assert_failure response
 
-    assert_equal 'Card number declined by processor', response.message
+    assert_equal 'Card rejected: invalid card number', response.message
   end
 
   def test_invalid_login

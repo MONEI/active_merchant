@@ -128,9 +128,9 @@ module ActiveMerchant #:nodoc:
       def scrub(transcript)
         transcript.
           gsub(%r((Authorization: )\w+), '\1[FILTERED]').
-          gsub(%r((card\[number\]=)\d+), '\1[FILTERED]').
-          gsub(%r((card\[cvc\]=)\d+), '\1[FILTERED]').
-          gsub(%r((&?auth\[cavv\]=)[\w=]*(&?)), '\1[FILTERED]\2')
+          gsub(%r(("number":")\d+), '\1[FILTERED]').
+          gsub(%r(("cvc":")\d+), '\1[FILTERED]').
+          gsub(%r(("cavv":")[\w=]+), '\1[FILTERED]')
       end
 
       private
