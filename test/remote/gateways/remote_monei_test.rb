@@ -59,21 +59,7 @@ class RemoteMoneiTest < Test::Unit::TestCase
         ds_transaction_id: '7eac9571-3533-4c38-addd-00cf34af6a52'
       },
       ip: '77.110.174.153',
-      user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36',
-      three_ds_2: {
-        channel: 'browser',
-        notification_url: 'https://example.com/notification',
-        browser_info: {
-          accept_header: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8,application/json',
-          depth: 100,
-          java: false,
-          language: 'US',
-          height: 1000,
-          width: 500,
-          timezone: '-120',
-          user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36'
-        }
-      }
+      user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36'
     })
     response = @gateway.purchase(@amount, @three_ds_2_enrolled_card, options)
 

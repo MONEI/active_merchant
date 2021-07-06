@@ -144,8 +144,7 @@ module ActiveMerchant #:nodoc:
         add_payment(request, credit_card)
         add_customer(request, credit_card, options)
         add_3ds_authenticated_data(request, options)
-        add_3ds(request, options)
-
+        add_browser_info(request, options)
         commit(request, action, options)
       end
 
@@ -277,36 +276,9 @@ module ActiveMerchant #:nodoc:
         }
       end
 
-      # Private: add to the request the info to validate 3DSecure
-      def add_3ds(request, options)
-        if three_ds_2_options = options[:three_ds_2]
-          device_channel = three_ds_2_options[:channel]
-          if device_channel != 'app'
-            add_browser_info(request, three_ds_2_options[:browser_info])
-            request[:paymentMethod][:card][:auth][:notificationUrl] = three_ds_2_options[:notification_url]
-          end
-
-          request[:paymentMethod][:card][:auth][:scaExemption] = options[:sca_exemption] if options.has_key?(:sca_exemption)
-        else
-          return unless !options[:execute_threed].nil? || !options[:threed_dynamic].nil?
-
-          request[:sessionDetails][:ip] = options[:ip] if options[:ip]
-          request[:sessionDetails][:userAgent] = options[:user_agent] if options[:user_agent]
-          request[:sessionDetails][:browserAccept] = options[:accept_header] if options[:accept_header]
-        end
-      end
-
-      def add_browser_info(request, browser_info)
-        return unless browser_info
-
-        request[:sessionDetails][:userAgent] = browser_info[:user_agent] if browser_info[:user_agent]
-        request[:sessionDetails][:browserAccept] = browser_info[:accept_header] if browser_info[:accept_header]
-        request[:sessionDetails][:browserColorDepth] = browser_info[:depth].to_s if browser_info[:depth]
-        # request[:sessionDetails][:javaEnabled] = browser_info[:java]
-        request[:sessionDetails][:lang] = browser_info[:language] if browser_info[:language]
-        request[:sessionDetails][:browserScreenHeight] = browser_info[:height].to_s if browser_info[:height]
-        request[:sessionDetails][:browserScreenWidth] = browser_info[:width].to_s if browser_info[:width]
-        request[:sessionDetails][:browserTimezoneOffset] = browser_info[:timezone].to_s if browser_info[:timezone]
+      def add_browser_info(request, options)
+        request[:sessionDetails][:ip] = options[:ip] if options[:ip]
+        request[:sessionDetails][:userAgent] = options[:user_agent] if options[:user_agent]
       end
 
       # Private: Parse JSON response from Monei servers
