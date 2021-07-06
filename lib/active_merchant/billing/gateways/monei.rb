@@ -18,7 +18,7 @@ module ActiveMerchant #:nodoc:
       self.money_format = :cents
       self.supported_cardtypes = %i[visa master maestro jcb american_express]
 
-      self.homepage_url = 'http://www.monei.net/'
+      self.homepage_url = 'https://monei.com/'
       self.display_name = 'MONEI'
 
       # Constructor
@@ -34,7 +34,7 @@ module ActiveMerchant #:nodoc:
       # Public: Performs purchase operation
       #
       # money       - Amount of purchase
-      # credit_card - Credit card
+      # payment_method - Credit card
       # options     - Hash containing purchase options
       #               :order_id         Merchant created id for the purchase
       #               :billing_address  Hash with billing address information
@@ -42,14 +42,14 @@ module ActiveMerchant #:nodoc:
       #               :currency         Sale currency to override money object or default (optional)
       #
       # Returns Active Merchant response object
-      def purchase(money, credit_card, options = {})
-        execute_new_order(:purchase, money, credit_card, options)
+      def purchase(money, payment_method, options = {})
+        execute_new_order(:purchase, money, payment_method, options)
       end
 
       # Public: Performs authorization operation
       #
       # money       - Amount to authorize
-      # credit_card - Credit card
+      # payment_method - Credit card
       # options     - Hash containing authorization options
       #               :order_id         Merchant created id for the authorization
       #               :billing_address  Hash with billing address information
@@ -57,8 +57,8 @@ module ActiveMerchant #:nodoc:
       #               :currency         Sale currency to override money object or default (optional)
       #
       # Returns Active Merchant response object
-      def authorize(money, credit_card, options = {})
-        execute_new_order(:authorize, money, credit_card, options)
+      def authorize(money, payment_method, options = {})
+        execute_new_order(:authorize, money, payment_method, options)
       end
 
       # Public: Performs capture operation on previous authorization
@@ -106,7 +106,7 @@ module ActiveMerchant #:nodoc:
 
       # Public: Verifies credit card. Does this by doing a authorization of 1.00 Euro and then voiding it.
       #
-      # credit_card - Credit card
+      # payment_method - Credit card
       # options     - Hash containing authorization options
       #               :order_id         Merchant created id for the authorization
       #               :billing_address  Hash with billing address information
@@ -114,11 +114,15 @@ module ActiveMerchant #:nodoc:
       #               :currency         Sale currency to override money object or default (optional)
       #
       # Returns Active Merchant response object of Authorization operation
-      def verify(credit_card, options = {})
+      def verify(payment_method, options = {})
         MultiResponse.run(:use_first_response) do |r|
-          r.process { authorize(100, credit_card, options) }
+          r.process { authorize(100, payment_method, options) }
           r.process(:ignore_result) { void(r.authorization, options) }
         end
+      end
+
+      def store(payment_method, options = {})
+        execute_new_order(:store, 0, payment_method, options)
       end
 
       def supports_scrubbing?
@@ -136,13 +140,12 @@ module ActiveMerchant #:nodoc:
       private
 
       # Private: Execute purchase or authorize operation
-      def execute_new_order(action, money, credit_card, options)
+      def execute_new_order(action, money, payment_method, options)
         request = build_request
-
         add_identification_new_order(request, options)
         add_transaction(request, action, money, options)
-        add_payment(request, credit_card)
-        add_customer(request, credit_card, options)
+        add_payment(request, payment_method)
+        add_customer(request, payment_method, options)
         add_3ds_authenticated_data(request, options)
         add_browser_info(request, options)
         commit(request, action, options)
@@ -188,17 +191,21 @@ module ActiveMerchant #:nodoc:
       end
 
       # Private: Add payment method to request
-      def add_payment(request, credit_card)
-        request[:paymentMethod] = {}
-        request[:paymentMethod][:card] = {}
-        request[:paymentMethod][:card][:number] = credit_card.number
-        request[:paymentMethod][:card][:expMonth] = format(credit_card.month, :two_digits)
-        request[:paymentMethod][:card][:expYear] = format(credit_card.year, :two_digits)
-        request[:paymentMethod][:card][:cvc] = credit_card.verification_value.to_s
+      def add_payment(request, payment_method)
+        if payment_method.is_a? String
+          request[:paymentToken] = payment_method
+        else
+          request[:paymentMethod] = {}
+          request[:paymentMethod][:card] = {}
+          request[:paymentMethod][:card][:number] = payment_method.number
+          request[:paymentMethod][:card][:expMonth] = format(payment_method.month, :two_digits)
+          request[:paymentMethod][:card][:expYear] = format(payment_method.year, :two_digits)
+          request[:paymentMethod][:card][:cvc] = payment_method.verification_value.to_s
+        end
       end
 
       # Private: Add customer part to request
-      def add_customer(request, credit_card, options)
+      def add_customer(request, payment_method, options)
         requires!(options, :billing_address)
         address = options[:billing_address] || options[:address]
 
@@ -230,10 +237,10 @@ module ActiveMerchant #:nodoc:
       # 07 = DEFAULT_E_COMMERCE
       def eci_to_result_indicator(eci)
         case eci
-        when '02', '05'
-          return eci
-        else
-          return '07'
+          when '02', '05'
+            return eci
+          else
+            return '07'
         end
       end
 
@@ -332,7 +339,7 @@ module ActiveMerchant #:nodoc:
           success,
           message_from(response, success),
           response,
-          authorization: authorization_from(response),
+          authorization: authorization_from(response, action),
           test: test?,
           error_code: error_code_from(response, success)
         )
@@ -360,8 +367,13 @@ module ActiveMerchant #:nodoc:
       end
 
       # Private: Get authorization code from servers response
-      def authorization_from(response)
-        response['id']
+      def authorization_from(response, action)
+        case action
+          when :store
+            return response['paymentToken']
+          else
+            return response['id']
+        end
       end
 
       # Private: Encode POST parameters
@@ -371,6 +383,7 @@ module ActiveMerchant #:nodoc:
 
       # Private: generate request params depending on action
       def params(request, action)
+        request[:generatePaymentToken] = true if action == :store
         request
       end
 
@@ -378,6 +391,7 @@ module ActiveMerchant #:nodoc:
       def translate_payment_code(action)
         {
           purchase: 'SALE',
+          store: 'SALE',
           authorize: 'AUTH',
           capture: 'CAPTURE',
           refund: 'REFUND',
@@ -389,6 +403,7 @@ module ActiveMerchant #:nodoc:
       def translate_action_endpoint(action, options)
         {
           purchase: '',
+          store: '',
           authorize: '',
           capture: "/#{options[:paymentId]}/capture",
           refund: "/#{options[:paymentId]}/refund",
